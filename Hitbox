@@ -705,7 +705,16 @@ local function refreshTeamDropdown()
             tBtn.MouseButton1Click:Connect(function()
                 _G.DisabledTeams[teamName] = not _G.DisabledTeams[teamName]
                 tBtn.Text = "Team ["..teamName.."]: "..(_G.DisabledTeams[teamName] and "OFF" or "ON")
-                if not _G.Disabled then mech.restoreAll() end
+                
+                for _, player in ipairs(Players:GetPlayers()) do
+                    if player ~= LocalPlayer and player.Team and player.Team.Name == teamName then
+                        if _G.DisabledTeams[teamName] then
+                            mech.restorePlayer(player)
+                            graphics.removeESPHighlight(player)
+                        end
+                    end
+                end
+                globalESPUpdate()
             end)
             totalHeight = totalHeight + 38
         end
@@ -728,12 +737,20 @@ end)
 local function globalESPUpdate()
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer then
-            if _G.ESPEnabled and (not _G.TeamCheck or p.Team ~= LocalPlayer.Team) then
+            local isTeamDisabled = p.Team and _G.DisabledTeams[p.Team.Name]
+            if _G.ESPEnabled and not isTeamDisabled and (not _G.TeamCheck or p.Team ~= LocalPlayer.Team) then
                 if not playerLabels[p] then graphics.createESPLabel(p) end
                 if not _G.EspHighlights[p] then graphics.createESPHighlight(p) end
+                
+                -- Hide original game overhead tags when master ESP is running
+                if p.Character then
+                    local hum = p.Character:FindFirstChildOfClass("Humanoid")
+                    if hum then utils.safeSetProperty(hum, "DisplayDistanceType", Enum.HumanoidDisplayDistanceType.None) end
+                end
             else
                 graphics.removeESPHighlight(p)
                 graphics.removeESPLabel(p)
+                -- Revert to normal original overhead names when master ESP is turned off
                 if p.Character then
                     local hum = p.Character:FindFirstChildOfClass("Humanoid")
                     if hum then utils.safeSetProperty(hum, "DisplayDistanceType", Enum.HumanoidDisplayDistanceType.Viewer) end
@@ -746,8 +763,13 @@ local function globalESPUpdate()
         if npc and npc.Parent then
             if _G.NPCESPEnabled then
                 if not npcLabels[npc] then graphics.createNPCLabel(npc) end
+                
+                -- Hide original game NPC overhead labels when running
+                local hum = npc:FindFirstChildOfClass("Humanoid")
+                if hum then utils.safeSetProperty(hum, "DisplayDistanceType", Enum.HumanoidDisplayDistanceType.None) end
             else
                 graphics.removeNPCLabel(npc)
+                -- Revert NPC overhead tags back to standard
                 local hum = npc:FindFirstChildOfClass("Humanoid")
                 if hum then utils.safeSetProperty(hum, "DisplayDistanceType", Enum.HumanoidDisplayDistanceType.Viewer) end
             end
@@ -802,14 +824,14 @@ flingBtn.MouseButton1Click:Connect(function() flingEngine.fling(flingInput.Text)
 
 szMin.MouseButton1Click:Connect(function() if _G.HeadSize > 5 then _G.HeadSize = _G.HeadSize - 5 end; szDisp.Text = tostring(_G.HeadSize) end)
 szPls.MouseButton1Click:Connect(function() if _G.HeadSize < 100 then _G.HeadSize = _G.HeadSize + 5 end; szDisp.Text = tostring(_G.HeadSize) end)
-rtMin.MouseButton1Click:Connect(function() if _G.RootSize > 2 then _G.RootSize = _G.RootSize - 5 end; rtDisp.Text = tostring(_G.RootSize) end)
-rtPls.MouseButton1Click:Connect(function() if _G.RootSize < 100 then _G.RootSize = _G.RootSize + 5 end; rtDisp.Text = tostring(_G.RootSize) end)
+rtMin.MouseButton1Click:Connect(function() if _G.RootSize > 2 then _G.RootSize = _G.RootSize - 2 end; rtDisp.Text = tostring(_G.RootSize) end)
+rtPls.MouseButton1Click:Connect(function() if _G.RootSize < 100 then _G.RootSize = _G.RootSize + 2 end; rtDisp.Text = tostring(_G.RootSize) end)
 
 trMin.MouseButton1Click:Connect(function() _G.HitboxTransparency = math.max(0, _G.HitboxTransparency - 0.1); trDisp.Text = string.format("%.1f", _G.HitboxTransparency) end)
 trPls.MouseButton1Click:Connect(function() _G.HitboxTransparency = math.min(1, _G.HitboxTransparency + 0.1); trDisp.Text = string.format("%.1f", _G.HitboxTransparency) end)
 
-wsMin.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomWalkSpeed = math.max(0, _G.CustomWalkSpeed - 2); wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
-wsPls.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomWalkSpeed = _G.CustomWalkSpeed + 2; wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
+wsMin.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomWalkSpeed = math.max(0, _G.CustomWalkSpeed - 5); wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
+wsPls.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomWalkSpeed = _G.CustomWalkSpeed + 5; wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
 jpMin.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomJumpPower = math.max(0, _G.CustomJumpPower - 10); jpDisp.Text = tostring(_G.CustomJumpPower) end)
 jpPls.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomJumpPower = _G.CustomJumpPower + 10; jpDisp.Text = tostring(_G.CustomJumpPower) end)
 
@@ -876,11 +898,14 @@ RunService.RenderStepped:Connect(function()
         for _, v in next, Players:GetPlayers() do
             if v ~= LocalPlayer and v.Character then
                 local hum = v.Character:FindFirstChildOfClass("Humanoid")
-                if hum and hum.Health <= 0 then 
-                    mech.restorePlayer(v) 
-                    graphics.removeESPHighlight(v) 
+                local isTeamDisabled = v.Team and _G.DisabledTeams[v.Team.Name]
+
+                if (hum and hum.Health <= 0) or isTeamDisabled then 
+                    if _G.OriginalProps[v] then
+                        mech.restorePlayer(v) 
+                        graphics.removeESPHighlight(v) 
+                    end
                 else 
-                    -- Optimize: Only apply the size configuration if it changed
                     local targetName = (_G.TargetPart == "Head" or (hum and hum.SeatPart)) and "Head" or "HumanoidRootPart"
                     local part = v.Character:FindFirstChild(targetName)
                     local desiredSize = (targetName == "HumanoidRootPart") and _G.RootSize or _G.HeadSize
