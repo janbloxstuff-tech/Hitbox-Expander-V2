@@ -83,7 +83,7 @@ _G.CoreUtils = {
     Lighting = Lighting,
     LocalPlayer = LocalPlayer
 }
-
+-- JanBlox Gui Pro Version
 -- PART 2: Memory Registration Framework & Object Recovery
 local utils = _G.CoreUtils
 local Players, LocalPlayer = utils.Players, utils.LocalPlayer
@@ -188,7 +188,7 @@ _G.Mechanics = {
     storeOriginal = storeOriginal,
     storeNPCOriginal = storeNPCOriginal
 }
-
+-- JanBlox Gui Pro Version
 -- PART 3: Graphics Modification Engine, ESP, and Teleport Pipeline
 local utils = _G.CoreUtils
 local espHighlights, playerLabels, npcLabels = _G.EspHighlights, _G.PlayerLabels, _G.NpcLabels
@@ -284,7 +284,7 @@ _G.FlingEngine = {
         myRoot.CFrame = oldC
     end
 }
-
+-- JanBlox Gui Pro Version
 -- PART 4: Scaling Pipelines and Dynamic Rendering Loops
 local utils = _G.CoreUtils
 local mech = _G.Mechanics
@@ -333,6 +333,7 @@ _G.Pipeline = {
         end)
     end
 }
+-- JanBlox Gui Pro Version
 -- PART 5: Interface Generation Framework
 local utils = _G.CoreUtils
 local mech = _G.Mechanics
@@ -455,7 +456,7 @@ frame.Size = UDim2.new(0, 260, 0, 520)
 frame.Position = UDim2.new(0, 10, 0, 60)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
-frame.ZIndex = 10 -- FIX: Baseline stack assignment 
+frame.ZIndex = 10 
 frame.Visible = true
 frame.Parent = screenGui
 
@@ -566,7 +567,6 @@ sendChatBtn.BackgroundColor3 = Color3.fromRGB(50, 120, 50)
 sendChatBtn.TextColor3 = Color3.new(1, 1, 1)
 sendChatBtn.Font = Enum.Font.GothamBold
 sendChatBtn.TextSize = 12
-sendChatBtn.Text = "Send"
 sendChatBtn.ZIndex = 12
 sendChatBtn.Parent = chatFrame
 
@@ -631,7 +631,6 @@ uiList.Padding = UDim.new(0, 6)
 uiList.SortOrder = Enum.SortOrder.LayoutOrder
 uiList.Parent = scrollingFrame
 
--- FIX: Automatically adjust CanvasSize based on elements added inside the scrolling space
 uiList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, uiList.AbsoluteContentSize.Y + 20)
 end)
@@ -673,7 +672,7 @@ local function createTrackerRow(labelTxt, valTxt, order, parentFrame)
 end
 
 _G.UIBuilders = { createHeader = createHeader, createButton = createButton, createTrackerRow = createTrackerRow, scrollingFrame = scrollingFrame, frame = frame }
-
+-- JanBlox Gui Pro Version
 -- PART 6: Interactivity Listeners, Teleport Logic, and Advanced Control Loops
 local utils = _G.CoreUtils
 local mech = _G.Mechanics
@@ -840,6 +839,13 @@ end)
 
 forcefieldCheckButton.MouseButton1Click:Connect(function()
     _G.CheckForcefield = not _G.CheckForcefield; forcefieldCheckButton.Text = "Check Forcefield: " .. (_G.CheckForcefield and "ON" or "OFF")
+end)
+
+-- FIX: Linked the button click to flip _G.ESPEnabled state so the ESP runs properly
+espToggleButton.MouseButton1Click:Connect(function()
+    _G.ESPEnabled = not _G.ESPEnabled
+    espToggleButton.Text = "ESP Master Switch: " .. (_G.ESPEnabled and "ON" or "OFF")
+    globalESPUpdate()
 end)
 
 teamCheckButton.MouseButton1Click:Connect(function()
