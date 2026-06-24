@@ -313,6 +313,45 @@ _G.FlingEngine = {
     end
 }
 
+-- Efficient NPC tracking to avoid scanning the whole workspace every frame
+local function isNPCModel(model)
+    if not model or not model:IsA("Model") then return false end
+    local hum = model:FindFirstChildOfClass("Humanoid")
+    return hum ~= nil and not Players:GetPlayerFromCharacter(model)
+end
+
+local function trackNPC(model)
+    if not isNPCModel(model) then return end
+    trackedNPCs[model] = true
+end
+
+local function untrackNPC(model)
+    if not model then return end
+    if trackedNPCs[model] then
+        mech.restoreNPC(model)
+        graphics.removeNPCLabel(model)
+        trackedNPCs[model] = nil
+    end
+end
+
+for _, desc in ipairs(Workspace:GetDescendants()) do
+    if desc:IsA("Humanoid") and desc.Parent and isNPCModel(desc.Parent) then
+        trackNPC(desc.Parent)
+    end
+end
+
+Workspace.DescendantAdded:Connect(function(desc)
+    if desc:IsA("Humanoid") and desc.Parent and isNPCModel(desc.Parent) then
+        trackNPC(desc.Parent)
+    end
+end)
+
+Workspace.DescendantRemoving:Connect(function(desc)
+    if desc:IsA("Humanoid") then
+        untrackNPC(desc.Parent)
+    end
+end)
+
 -- Run this for every player to handle them respawning automatically
 local function monitorPlayer(player)
     if player == Players.LocalPlayer then return end
@@ -721,6 +760,7 @@ local function createTrackerRow(labelTxt, valTxt, order, parentFrame)
 end
 
 _G.UIBuilders = { createHeader = createHeader, createButton = createButton, createTrackerRow = createTrackerRow, scrollingFrame = scrollingFrame, frame = frame }
+
 -- PART 6: Interactivity Listeners, Teleport Logic, and Advanced Control Loops
 local utils = _G.CoreUtils
 local mech = _G.Mechanics
@@ -1004,6 +1044,22 @@ wsPls.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.Custom
 jpMin.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomJumpPower = math.max(0, _G.CustomJumpPower - 10); jpDisp.Text = tostring(_G.CustomJumpPower) end)
 jpPls.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomJumpPower = _G.CustomJumpPower + 10; jpDisp.Text = tostring(_G.CustomJumpPower) end)
 
+playerResetBtn.MouseButton1Click:Connect(function()
+    _G.PlayerModEnabled = false
+    _G.CustomWalkSpeed = 16
+    _G.CustomJumpPower = 50
+    wsDisp.Text = tostring(_G.CustomWalkSpeed)
+    jpDisp.Text = tostring(_G.CustomJumpPower)
+
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.WalkSpeed = 16
+        hum.UseJumpPower = true
+        hum.JumpPower = 50
+    end
+end)
+
 flingBtn.MouseButton1Click:Connect(function() flingEngine.fling(flingInput.Text) end)
 
 local tpButtons = {}
@@ -1036,6 +1092,15 @@ RunService.RenderStepped:Connect(function()
     if _G.LoopFullBright then Lighting.Ambient = Color3.fromRGB(255, 255, 255); Lighting.Brightness = 2; Lighting.ClockTime = 14 end
     if _G.DayNightToggle and not _G.LoopFullBright then Lighting.ClockTime = 0 end
 
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        hum.UseJumpPower = true
+        if _G.PlayerModEnabled then
+            hum.WalkSpeed = _G.CustomWalkSpeed
+            hum.JumpPower = _G.CustomJumpPower
+        end
+    end
+
     if _G.PlayerModEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         local root = LocalPlayer.Character.HumanoidRootPart
         local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -1057,9 +1122,8 @@ RunService.RenderStepped:Connect(function()
 
     -- DYNAMIC PROCESSING ENGINE FOR WORKSPACE NPCs
     if _G.NPCHitbox or _G.NPCESPEnabled then
-        for _, desc in ipairs(Workspace:GetDescendants()) do
-            if desc:IsA("Humanoid") and desc.Parent and not Players:GetPlayerFromCharacter(desc.Parent) then
-                local npc = desc.Parent
+        for npc, _ in pairs(trackedNPCs) do
+            if npc and npc.Parent and isNPCModel(npc) then
                 if _G.NPCHitbox then
                     pipeline.applyToNPC(npc)
                 end
@@ -1068,12 +1132,17 @@ RunService.RenderStepped:Connect(function()
                 else
                     graphics.removeNPCLabel(npc)
                 end
+            else
+                untrackNPC(npc)
             end
         end
     else
         mech.restoreAllNPCs()
         for npc, _ in pairs(npcLabels) do
             graphics.removeNPCLabel(npc)
+        end
+        for npc, _ in pairs(trackedNPCs) do
+            untrackNPC(npc)
         end
     end
 end)
