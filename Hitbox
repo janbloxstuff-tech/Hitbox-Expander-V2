@@ -311,8 +311,6 @@ _G.FlingEngine = {
         myRoot.AssemblyLinearVelocity = oldV
         myRoot.CFrame = oldC
     end
-end
-
 }
 
 -- Run this for every player to handle them respawning automatically
