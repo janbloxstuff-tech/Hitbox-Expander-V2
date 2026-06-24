@@ -278,6 +278,7 @@ _G.Mechanics = {
             end
         end
     end,
+
     applyToPlayer = function(player)
         if not player or not player.Character or player == LocalPlayer then return end
         if not shouldApplyHitbox(player) then 
@@ -311,6 +312,7 @@ _G.Mechanics = {
             utils.safeSetProperty(part, "Transparency", _G.HitboxTransparency)
             utils.safeSetProperty(part, "Material", Enum.Material.SmoothPlastic)
             utils.safeSetProperty(part, "CanCollide", false)
+            utils.safeSetProperty(part, "CanTouch", true)
             
             -- Dynamic Scale-Based Weighting Configuration
             if part.Name == "Head" then
@@ -319,6 +321,7 @@ _G.Mechanics = {
             end
         end)
     end,
+
     applyToNPC = function(npc)
         if not npc then return end
         if _G.CheckForcefield and utils.hasForceField(npc) then
