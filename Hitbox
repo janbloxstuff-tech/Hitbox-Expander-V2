@@ -336,6 +336,7 @@ _G.Pipeline = {
         end)
     end
 }
+
 -- JanBlox Gui Pro Version
 -- PART 5: Interface Generation Framework
 
@@ -347,10 +348,7 @@ local flingEngine = _G.FlingEngine
 local Players, UserInputService, Workspace, StarterGui, Teams, Lighting, LocalPlayer = utils.Players, utils.UserInputService, utils.Workspace, utils.Teams, utils.Lighting, utils.LocalPlayer
 local playerLabels, npcLabels, trackedNPCs = _G.PlayerLabels, _G.NpcLabels, _G.TrackedNPCs
 
--- YOUR DISCORD WEBHOOK URL HERE (Replace this string with your actual URL)
-local WEBHOOK_URL = "https://discord.com/api/webhooks/1519440396994740400/hllJ1pf_7aQA-qC05pizgkVVjjBZmZVkDPtCweya5ig-pEAxEypi_vNIb65JzifssPRN"
-
--- Safety check: Wait until LocalPlayer is fully initialized
+-- Safety check: Wait up to 5 seconds until LocalPlayer is fully initialized
 if not LocalPlayer then
     local startTime = os.clock()
     while not Players.LocalPlayer and (os.clock() - startTime) < 5 do
@@ -359,13 +357,16 @@ if not LocalPlayer then
     LocalPlayer = Players.LocalPlayer
 end
 
--- If it's still nil, the script is running on the server side where UI cannot open
 if not LocalPlayer then
     error("JanBlox UI Error: LocalPlayer not found. Ensure this script is running on the client side!")
 end
 
+-- INSERT YOUR DISCORD WEBHOOK URL BELOW:
+local WEBHOOK_URL = "https://discord.com/api/webhooks/your_webhook_id/your_webhook_token"
+
 local playerGui = LocalPlayer:WaitForChild("PlayerGui")
 local existing = playerGui:FindFirstChild("JanBlox Gui Pro Version")
+if existing then existing:Destroy() end
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "JanBlox Gui Pro Version"
@@ -400,7 +401,7 @@ noticeLabel.TextColor3 = Color3.fromRGB(255, 200, 255)
 noticeLabel.Font = Enum.Font.GothamBold
 noticeLabel.TextSize = 12 
 noticeLabel.TextWrapped = true
-noticeLabel.ZIndex = 10001 -- THE FIX: Forces text to render IN FRONT of the frame
+noticeLabel.ZIndex = 10001 -- Forces text to render IN FRONT of the frame
 noticeLabel.Parent = noticeFrame
 
 local localName = "User"
@@ -415,7 +416,7 @@ skipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 skipBtn.Font = Enum.Font.GothamBold
 skipBtn.TextSize = 13
 skipBtn.Text = "OK (3)"
-skipBtn.ZIndex = 10001 -- THE FIX: Forces the button to render IN FRONT of the frame
+skipBtn.ZIndex = 10001 -- Forces the button to render IN FRONT of the frame
 skipBtn.Parent = noticeFrame
 
 local btnCorner = Instance.new("UICorner")
@@ -423,6 +424,7 @@ btnCorner.CornerRadius = UDim.new(0, 6)
 btnCorner.Parent = skipBtn
 
 task.spawn(function()
+    -- Safety self-destruct fallback so you never get stuck
     task.delay(6, function() if noticeFrame and noticeFrame.Parent then noticeFrame:Destroy() end end)
     
     for i = 3, 1, -1 do
@@ -482,7 +484,6 @@ title.Font = Enum.Font.GothamBold
 title.TextSize = 13
 title.Parent = topBar
 
--- Draggable implementation restricted exclusively to Top Bar
 local dragging, dragInput, dragStart, startPos
 topBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -500,11 +501,10 @@ end)
 
 toggleMenuBtn.MouseButton1Click:Connect(function() frame.Visible = not frame.Visible; toggleMenuBtn.Text = frame.Visible and "[X]" or "[O]" end)
 
--- --- FEEDBACK CHAT FRAME SYSTEM ---
 local chatFrame = Instance.new("Frame")
 chatFrame.Size = UDim2.new(0, 300, 0, 350)
 chatFrame.Position = UDim2.new(0, 280, 0, 60)
-chatFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+chatFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 chatFrame.BorderSizePixel = 0
 chatFrame.Visible = false
 chatFrame.ZIndex = 1000
@@ -558,13 +558,13 @@ sendChatBtn.TextSize = 12
 sendChatBtn.Text = "Send"
 sendChatBtn.Parent = chatFrame
 
--- --- EXCLUSIVE DEVELOPER DASHBOARD BUTTON PANEL ---
-local isDev = (LocalPlayer.Name == "Cyryl_YT" or LocalPlayer.Name == "Gameingwithkev2132")
+local isDev = false
+pcall(function() isDev = (LocalPlayer.Name == "Cyryl_YT" or LocalPlayer.Name == "Gameinwithkev2132") end)
 local devMenuBtn = Instance.new("TextButton")
 
 if isDev then
     devMenuBtn.Size = UDim2.new(0, 40, 0, 35)
-    devMenuBtn.Position = UDim2.new(0, -45, 0, 0) -- Perfect spacing directly on the left of the chat frame
+    devMenuBtn.Position = UDim2.new(0, -45, 0, 0)
     devMenuBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
     devMenuBtn.TextColor3 = Color3.new(1, 1, 1)
     devMenuBtn.Font = Enum.Font.GothamBold
@@ -587,56 +587,28 @@ local function addLocalLogMessage(senderName, msg, isDevMsg)
     chatLogScroll.CanvasSize = UDim2.new(0, 0, 0, chatLogLayout.AbsoluteContentSize.Y)
 end
 
--- Webhook Dispatcher
 local function sendToDiscord(messageText)
-    if WEBHOOK_URL == "https://discord.com/api/webhooks/1519440396994740400/hllJ1pf_7aQA-qC05pizgkVVjjBZmZVkDPtCweya5ig-pEAxEypi_vNIb65JzifssPRN" then
-        warn("Please update the WEBHOOK_URL variable at the top of Part 5 to use live external logging.")
-        return
-    end
-    
-    local http = game:GetService("HttpService")
-    local payload = http:JSONEncode({
+    if not string.find(WEBHOOK_URL, "discord.com/api/webhooks") then return end
+    local payload = game:GetService("HttpService"):JSONEncode({
         username = "JanBlox Feedback System",
         content = "**" .. LocalPlayer.Name .. " (Display: " .. LocalPlayer.DisplayName .. "):** " .. messageText
     })
-    
-    -- Utilizes exploit network environment wrappers if accessible
     pcall(function()
-        if syn then
-            syn.request({ Url = WEBHOOK_URL, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = payload })
-        elseif request then
-            request({ Url = WEBHOOK_URL, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = payload })
-        elseif httpSpy then
-            httpSpy.request({ Url = WEBHOOK_URL, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = payload })
-        end
+        local req = syn and syn.request or request or (httpSpy and httpSpy.request)
+        if req then req({ Url = WEBHOOK_URL, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = payload }) end
     end)
 end
 
-feedbackLeftBtn.MouseButton1Click:Connect(function()
-    chatFrame.Visible = not chatFrame.Visible
-end)
-
-sendChatBtn.MouseButton1Click:Connect(function()
-    if feedbackBox.Text ~= "" then
-        addLocalLogMessage(LocalPlayer.Name, feedbackBox.Text, isDev)
-        sendToDiscord(feedbackBox.Text)
-        feedbackBox.Text = ""
-    end
-end)
-
-if isDev then
-    devMenuBtn.MouseButton1Click:Connect(function()
-        print("Developer authenticated access granted.")
-        -- You can plug your secure private testing controls inside this event clicker!
-    end)
-end
+feedbackLeftBtn.MouseButton1Click:Connect(function() chatFrame.Visible = not chatFrame.Visible end)
+sendChatBtn.MouseButton1Click:Connect(function() if feedbackBox.Text ~= "" then addLocalLogMessage(LocalPlayer.Name, feedbackBox.Text, isDev) sendToDiscord(feedbackBox.Text) feedbackBox.Text = "" end end)
+if isDev then devMenuBtn.MouseButton1Click:Connect(function() print("Developer authenticated access granted.") end) end
 
 local scrollingFrame = Instance.new("ScrollingFrame")
 scrollingFrame.Size = UDim2.new(1, -10, 1, -45)
 scrollingFrame.Position = UDim2.new(0, 5, 0, 40)
 scrollingFrame.BackgroundTransparency = 1
 scrollingFrame.ScrollBarThickness = 6
-scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 1800) 
+scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 1800)
 scrollingFrame.Parent = frame
 
 local uiList = Instance.new("UIListLayout")
@@ -675,10 +647,8 @@ local function createTrackerRow(labelTxt, valTxt, order, parentFrame)
     return minus, plus, disp
 end
 
-_G.UIBuilders = {
-    createHeader = createHeader, createButton = createButton, createTrackerRow = createTrackerRow,
-    scrollingFrame = scrollingFrame, frame = frame
-}
+_G.UIBuilders = { createHeader = createHeader, createButton = createButton, createTrackerRow = createTrackerRow, scrollingFrame = scrollingFrame, frame = frame }
+
 -- JanBlox Gui Pro Version
 -- PART 6: Interactivity Listeners, Teleport Logic, and Advanced Control Loops
 
