@@ -5,13 +5,16 @@
 _G.HeadSize = 5
 _G.Disabled = true -- note: your original script applies the hitbox when this is true
 _G.TargetPart = "HumanoidRootPart" -- can be "HumanoidRootPart" or "Head"
+_G.NPCHitbox = false -- NPC hitbox toggle
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
 
 -- Store original properties so we can restore them later
 local originalProps = {} -- originalProps[player] = { [partName] = {Size, Transparency, BrickColor, Material, CanCollide} }
+local npcHitboxes = {} -- Track which NPCs have hitboxes applied
 
 local function storeOriginal(player, partName)
     if not player or not player.Character then return end
@@ -20,6 +23,22 @@ local function storeOriginal(player, partName)
     local part = player.Character:FindFirstChild(partName)
     if part and part:IsA("BasePart") then
         originalProps[player][partName] = {
+            Size = part.Size,
+            Transparency = part.Transparency,
+            BrickColor = part.BrickColor,
+            Material = part.Material,
+            CanCollide = part.CanCollide,
+        }
+    end
+end
+
+local function storeNPCOriginal(npc, partName)
+    if not npc then return end
+    if not npcHitboxes[npc] then npcHitboxes[npc] = {} end
+    if npcHitboxes[npc][partName] then return end
+    local part = npc:FindFirstChild(partName)
+    if part and part:IsA("BasePart") then
+        npcHitboxes[npc][partName] = {
             Size = part.Size,
             Transparency = part.Transparency,
             BrickColor = part.BrickColor,
@@ -41,6 +60,25 @@ local function applyToPlayer(player)
         end
 
         storeOriginal(player, part.Name)
+        part.Size = Vector3.new(_G.HeadSize, _G.HeadSize, _G.HeadSize)
+        part.Transparency = 0.7
+        part.BrickColor = BrickColor.new("Really blue")
+        part.Material = Enum.Material.Neon
+        part.CanCollide = false
+    end)
+end
+
+local function applyToNPC(npc)
+    if not npc then return end
+    pcall(function()
+        -- Try to find HumanoidRootPart or Torso
+        local part = npc:FindFirstChild("HumanoidRootPart")
+        if not part then
+            part = npc:FindFirstChild("Torso")
+        end
+        if not part then return end
+
+        storeNPCOriginal(npc, part.Name)
         part.Size = Vector3.new(_G.HeadSize, _G.HeadSize, _G.HeadSize)
         part.Transparency = 0.7
         part.BrickColor = BrickColor.new("Really blue")
@@ -72,6 +110,27 @@ local function restorePlayer(player)
     end
 
     originalProps[player] = nil
+end
+
+local function restoreNPC(npc)
+    if not npc then return end
+    local data = npcHitboxes[npc]
+    if not data then return end
+
+    for partName, props in pairs(data) do
+        local part = npc:FindFirstChild(partName)
+        if part and part:IsA("BasePart") and props then
+            pcall(function()
+                part.Size = props.Size
+                part.Transparency = props.Transparency
+                part.BrickColor = props.BrickColor
+                part.Material = props.Material
+                part.CanCollide = props.CanCollide
+            end)
+        end
+    end
+
+    npcHitboxes[npc] = nil
 end
 
 local function restorePlayerFully(player)
@@ -114,6 +173,12 @@ local function restoreAll()
     end
 end
 
+local function restoreAllNPCs()
+    for npc, _ in pairs(npcHitboxes) do
+        restoreNPC(npc)
+    end
+end
+
 -- Reapply or restore on CharacterAdded
 Players.PlayerAdded:Connect(function(player)
     if player == LocalPlayer then return end
@@ -148,6 +213,7 @@ end
 -- Also check if players are dead and remove hitbox
 RunService.RenderStepped:Connect(function()
     if _G.Disabled then
+        -- Apply to players
         for _, v in next, Players:GetPlayers() do
             if v ~= LocalPlayer and v.Character then
                 local humanoid = v.Character:FindFirstChild("Humanoid")
@@ -160,6 +226,30 @@ RunService.RenderStepped:Connect(function()
                 end
             end
         end
+
+        -- Apply to NPCs if NPC hitbox is enabled
+        if _G.NPCHitbox then
+            for _, npc in ipairs(Workspace:GetDescendants()) do
+                if npc:IsA("Model") and npc ~= LocalPlayer.Character then
+                    -- Check if it's an NPC (has Humanoid but not a Player)
+                    local humanoid = npc:FindFirstChild("Humanoid")
+                    if humanoid and not Players:FindFirstChild(npc.Name) then
+                        if humanoid.Health > 0 then
+                            applyToNPC(npc)
+                        else
+                            restoreNPC(npc)
+                        end
+                    end
+                end
+            end
+        else
+            -- If NPC hitbox is off, restore all NPCs
+            restoreAllNPCs()
+        end
+    else
+        -- If main hitbox is off, restore everything
+        restoreAll()
+        restoreAllNPCs()
     end
 end)
 
@@ -176,7 +266,7 @@ screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 220, 0, 180)
+frame.Size = UDim2.new(0, 220, 0, 250)
 frame.Position = UDim2.new(0, 10, 0, 10)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
@@ -203,10 +293,21 @@ toggleButton.TextSize = 14
 toggleButton.Text = "Toggle Hitbox"
 toggleButton.Parent = frame
 
+-- Hitbox Target Label
+local targetLabel = Instance.new("TextLabel")
+targetLabel.Size = UDim2.new(1, -10, 0, 16)
+targetLabel.Position = UDim2.new(0, 5, 0, 66)
+targetLabel.BackgroundTransparency = 1
+targetLabel.Text = "Hitbox: " .. _G.TargetPart
+targetLabel.TextColor3 = Color3.new(0.5, 1, 0.5)
+targetLabel.Font = Enum.Font.Gotham
+targetLabel.TextSize = 11
+targetLabel.Parent = frame
+
 local changeButton = Instance.new("TextButton")
 changeButton.Name = "ChangeHitboxButton"
 changeButton.Size = UDim2.new(1, -10, 0, 34)
-changeButton.Position = UDim2.new(0, 5, 0, 66)
+changeButton.Position = UDim2.new(0, 5, 0, 84)
 changeButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
 changeButton.TextColor3 = Color3.new(1,1,1)
 changeButton.Font = Enum.Font.Gotham
@@ -214,10 +315,21 @@ changeButton.TextSize = 14
 changeButton.Text = "Change Hitbox"
 changeButton.Parent = frame
 
+local npcToggleButton = Instance.new("TextButton")
+npcToggleButton.Name = "NPCHitboxButton"
+npcToggleButton.Size = UDim2.new(1, -10, 0, 34)
+npcToggleButton.Position = UDim2.new(0, 5, 0, 120)
+npcToggleButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+npcToggleButton.TextColor3 = Color3.new(1,1,1)
+npcToggleButton.Font = Enum.Font.Gotham
+npcToggleButton.TextSize = 14
+npcToggleButton.Text = "NPC Hitbox: OFF"
+npcToggleButton.Parent = frame
+
 -- Hitbox Limit Control Section
 local sizeLabel = Instance.new("TextLabel")
 sizeLabel.Size = UDim2.new(1, -10, 0, 16)
-sizeLabel.Position = UDim2.new(0, 5, 0, 102)
+sizeLabel.Position = UDim2.new(0, 5, 0, 156)
 sizeLabel.BackgroundTransparency = 1
 sizeLabel.Text = "HitBox Limit (50)"
 sizeLabel.TextColor3 = Color3.new(1,1,1)
@@ -227,7 +339,7 @@ sizeLabel.Parent = frame
 
 local sizeButtonContainer = Instance.new("Frame")
 sizeButtonContainer.Size = UDim2.new(1, -10, 0, 30)
-sizeButtonContainer.Position = UDim2.new(0, 5, 0, 120)
+sizeButtonContainer.Position = UDim2.new(0, 5, 0, 174)
 sizeButtonContainer.BackgroundTransparency = 1
 sizeButtonContainer.Parent = frame
 
@@ -271,11 +383,23 @@ toggleButton.MouseButton1Click:Connect(function()
     if not _G.Disabled then
         -- turning hitbox OFF -> restore everything
         restoreAll()
+        restoreAllNPCs()
     else
         -- turning hitbox ON -> apply to all players (will store originals)
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer then
                 applyToPlayer(p)
+            end
+        end
+        -- Apply to NPCs if enabled
+        if _G.NPCHitbox then
+            for _, npc in ipairs(Workspace:GetDescendants()) do
+                if npc:IsA("Model") and npc ~= LocalPlayer.Character then
+                    local humanoid = npc:FindFirstChild("Humanoid")
+                    if humanoid and not Players:FindFirstChild(npc.Name) then
+                        applyToNPC(npc)
+                    end
+                end
             end
         end
     end
@@ -290,6 +414,10 @@ changeButton.MouseButton1Click:Connect(function()
     else
         _G.TargetPart = "HumanoidRootPart"
     end
+    
+    -- Update label
+    targetLabel.Text = "Hitbox: " .. _G.TargetPart
+    
     -- If currently enabled, apply to new target immediately
     if _G.Disabled then
         for _, p in ipairs(Players:GetPlayers()) do
@@ -297,6 +425,28 @@ changeButton.MouseButton1Click:Connect(function()
                 applyToPlayer(p)
             end
         end
+    end
+end)
+
+npcToggleButton.MouseButton1Click:Connect(function()
+    _G.NPCHitbox = not _G.NPCHitbox
+    
+    if _G.NPCHitbox then
+        npcToggleButton.Text = "NPC Hitbox: ON"
+        -- Only apply if main hitbox is enabled
+        if _G.Disabled then
+            for _, npc in ipairs(Workspace:GetDescendants()) do
+                if npc:IsA("Model") and npc ~= LocalPlayer.Character then
+                    local humanoid = npc:FindFirstChild("Humanoid")
+                    if humanoid and not Players:FindFirstChild(npc.Name) then
+                        applyToNPC(npc)
+                    end
+                end
+            end
+        end
+    else
+        npcToggleButton.Text = "NPC Hitbox: OFF"
+        restoreAllNPCs()
     end
 end)
 
@@ -308,11 +458,16 @@ minusButton.MouseButton1Click:Connect(function()
     
     sizeDisplay.Text = tostring(_G.HeadSize)
     
-    -- If hitbox is currently enabled, reapply to all players
+    -- If hitbox is currently enabled, reapply to all players and NPCs
     if _G.Disabled then
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer then
                 applyToPlayer(p)
+            end
+        end
+        if _G.NPCHitbox then
+            for npc, _ in pairs(npcHitboxes) do
+                applyToNPC(npc)
             end
         end
     end
@@ -326,11 +481,16 @@ plusButton.MouseButton1Click:Connect(function()
     
     sizeDisplay.Text = tostring(_G.HeadSize)
     
-    -- If hitbox is currently enabled, reapply to all players
+    -- If hitbox is currently enabled, reapply to all players and NPCs
     if _G.Disabled then
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer then
                 applyToPlayer(p)
+            end
+        end
+        if _G.NPCHitbox then
+            for npc, _ in pairs(npcHitboxes) do
+                applyToNPC(npc)
             end
         end
     end
