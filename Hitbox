@@ -311,7 +311,7 @@ _G.FlingEngine = {
         myRoot.AssemblyLinearVelocity = oldV
         myRoot.CFrame = oldC
     end
-end,
+end
 
 }
 
