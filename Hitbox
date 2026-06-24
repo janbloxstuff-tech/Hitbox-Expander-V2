@@ -418,6 +418,7 @@ _G.Pipeline = {
     end
 }
 
+-- Main Modular Interface Blueprint and Simulation Control Rig
 local utils = _G.CoreUtils
 local mech = _G.Mechanics
 local graphics = _G.GraphicsEngine
@@ -720,8 +721,8 @@ local function globalESPUpdate()
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer then
             if _G.ESPEnabled and (not _G.TeamCheck or p.Team ~= LocalPlayer.Team) then
-                graphics.createESPLabel(p)
-                graphics.createESPHighlight(p)
+                if not playerLabels[p] then graphics.createESPLabel(p) end
+                if not _G.EspHighlights[p] then graphics.createESPHighlight(p) end
             else
                 graphics.removeESPHighlight(p)
                 graphics.removeESPLabel(p)
@@ -736,7 +737,7 @@ local function globalESPUpdate()
     for npc, _ in pairs(trackedNPCs) do
         if npc and npc.Parent then
             if _G.NPCESPEnabled then
-                graphics.createNPCLabel(npc)
+                if not npcLabels[npc] then graphics.createNPCLabel(npc) end
             else
                 graphics.removeNPCLabel(npc)
                 local hum = npc:FindFirstChildOfClass("Humanoid")
@@ -746,7 +747,7 @@ local function globalESPUpdate()
     end
 end
 
--- Interactions Listeners
+-- Interaction Listeners
 toggleButton.MouseButton1Click:Connect(function()
     _G.Disabled = not _G.Disabled
     toggleButton.Text = "Toggle Hitbox: " .. (_G.Disabled and "ON" or "OFF")
@@ -849,42 +850,56 @@ end
 Players.PlayerAdded:Connect(connectCharacter)
 for _, p in ipairs(Players:GetPlayers()) do if p ~= LocalPlayer then connectCharacter(p); if p.Character then globalESPUpdate() end end end
 
-local npcScanCooldown = 0
-RunService.RenderStepped:Connect(function()
-    if _G.InventoryLock then pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true) end) end
-
-    if _G.PlayerModEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-        local myHumanoid = LocalPlayer.Character.Humanoid
-        myHumanoid.UseJumpPower = true 
-        if myHumanoid.WalkSpeed ~= _G.CustomWalkSpeed then myHumanoid.WalkSpeed = _G.CustomWalkSpeed end
-        if myHumanoid.JumpPower ~= _G.CustomJumpPower then myHumanoid.JumpPower = _G.CustomJumpPower end
-    end
-
-    for p, _ in pairs(playerLabels) do if p then updateESPLabel(p) end end
-    for npc, _ in pairs(npcLabels) do if npc then updateNPCLabel(npc) end end
-    
-    if _G.Disabled then
+if _G.Disabled then
         for _, v in next, Players:GetPlayers() do
             if v ~= LocalPlayer and v.Character then
                 local hum = v.Character:FindFirstChildOfClass("Humanoid")
-                if hum and hum.Health <= 0 then mech.restorePlayer(v) graphics.removeESPHighlight(v) else pipeline.applyToPlayer(v) end
+                if hum and hum.Health <= 0 then 
+                    mech.restorePlayer(v) 
+                    graphics.removeESPHighlight(v) 
+                else 
+                    -- Optimize: Only apply the size configuration if it changed
+                    local targetName = (_G.TargetPart == "Head" or (hum and hum.SeatPart)) and "Head" or "HumanoidRootPart"
+                    local part = v.Character:FindFirstChild(targetName)
+                    local desiredSize = (targetName == "HumanoidRootPart") and _G.RootSize or _G.HeadSize
+                    if _G.HitboxScaleMode == "Large" then desiredSize = desiredSize * 2.5 elseif _G.HitboxScaleMode == "Small" then desiredSize = desiredSize * 0.6 end
+                    
+                    if part and part.Size.X ~= desiredSize then
+                        pipeline.applyToPlayer(v) 
+                    end
+                end
             end
         end
         
         npcScanCooldown = npcScanCooldown + (1/60)
-        if npcScanCooldown >= 1.2 then
+        if npcScanCooldown >= 2.0 then
             npcScanCooldown = 0
             pcall(function()
+                local newNpcFound = false
                 for _, object in ipairs(Workspace:GetDescendants()) do
                     if object:IsA("Model") and object ~= LocalPlayer.Character then
                         local hum = object:FindFirstChildOfClass("Humanoid")
                         if hum and not Players:FindFirstChild(object.Name) then
-                            trackedNPCs[object] = true
-                            if _G.NPCHitbox and hum.Health > 0 then pipeline.applyToNPC(object) else mech.restoreNPC(object) end
+                            if not trackedNPCs[object] then
+                                trackedNPCs[object] = true
+                                newNpcFound = true
+                            end
+                            
+                            local head = object:FindFirstChild("Head")
+                            local desiredNPCSize = 5
+                            if _G.HitboxScaleMode == "Large" then desiredNPCSize = 12.5 elseif _G.HitboxScaleMode == "Small" then desiredNPCSize = 3 end
+                            
+                            if _G.NPCHitbox and hum.Health > 0 then 
+                                if head and head.Size.X ~= desiredNPCSize then
+                                    pipeline.applyToNPC(object) 
+                                end
+                            else 
+                                if _G.NpcHitboxes[object] then mech.restoreNPC(object) end
+                            end
                         end
                     end
                 end
-                globalESPUpdate()
+                if newNpcFound then globalESPUpdate() end
             end)
         end
     else
