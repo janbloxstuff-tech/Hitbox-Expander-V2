@@ -1,153 +1,77 @@
 -- JanBlox Gui Pro Version (LocalScript)
--- Place this script in StarterPlayerScripts (NOT StarterGui). It will create the ScreenGui under PlayerGui at runtime.
+-- Place this script in StarterGui (or PlayerScripts) so it runs for the LocalPlayer
 
--- Defaults & globals
-_G.HeadSize = 5                -- default size
-_G.Disabled = true             -- when true, hitboxes are active (keeps original behavior)
-_G.TargetPart = "HumanoidRootPart" -- "HumanoidRootPart" or "Head"
-_G.TeamCheck = false           -- when true, hide hitboxes on your team (if teams exist)
-local SIZE_STEP = 5            -- step for increase/decrease
+-- Original settings from your script
+_G.HeadSize = 5
+_G.Disabled = true -- note: your original script applies the hitbox when this is true
+_G.TargetPart = "HumanoidRootPart" -- can be "HumanoidRootPart" or "Head"
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local TeamsService = game:GetService("Teams")
 local LocalPlayer = Players.LocalPlayer
 
--- Store original properties per player by userId
--- originalProps[userId] = { [partName] = { Size, Transparency, BrickColor, Material, CanCollide, CanQuery, mesh = {className, props} } }
-local originalProps = {}
-
-local function userKey(player)
-    return tostring(player.UserId or player.Name)
-end
-
-local function hasTeams()
-    local teams = TeamsService:GetTeams()
-    return #teams >= 2
-end
-
--- Record mesh info and then remove it from part
-local function captureAndRemoveMesh(part, storeTable)
-    for _, child in ipairs(part:GetChildren()) do
-        if child:IsA("SpecialMesh") or child:IsA("BlockMesh") or child:IsA("CylinderMesh") or child:IsA("FileMesh") then
-            local meshInfo = { className = child.ClassName, properties = {} }
-            pcall(function()
-                if child:IsA("SpecialMesh") then
-                    meshInfo.properties.MeshId = child.MeshId
-                    meshInfo.properties.TextureId = child.TextureId
-                    meshInfo.properties.Offset = child.Offset
-                    meshInfo.properties.Scale = child.Scale
-                    meshInfo.properties.MeshType = child.MeshType
-                else
-                    meshInfo.properties.Scale = child.Scale
-                    meshInfo.properties.Offset = child.Offset
-                    meshInfo.properties.MeshId = child.MeshId
-                    meshInfo.properties.TextureId = child.TextureId
-                end
-            end)
-            storeTable.mesh = meshInfo
-            pcall(function() child:Destroy() end)
-            break
-        end
-    end
-end
-
-local function recreateMesh(part, meshInfo)
-    if not meshInfo or not meshInfo.className then return end
-    pcall(function()
-        local newMesh = Instance.new(meshInfo.className)
-        newMesh.Name = meshInfo.className
-        local props = meshInfo.properties or {}
-        if newMesh:IsA("SpecialMesh") then
-            if props.MeshId then newMesh.MeshId = props.MeshId end
-            if props.TextureId then newMesh.TextureId = props.TextureId end
-            if props.Offset then newMesh.Offset = props.Offset end
-            if props.Scale then newMesh.Scale = props.Scale end
-            if props.MeshType then newMesh.MeshType = props.MeshType end
-        else
-            if props.Scale then newMesh.Scale = props.Scale end
-            if props.Offset then newMesh.Offset = props.Offset end
-            if props.MeshId then newMesh.MeshId = props.MeshId end
-            if props.TextureId then newMesh.TextureId = props.TextureId end
-        end
-        newMesh.Parent = part
-    end)
-end
+-- Store original properties so we can restore them later
+local originalProps = {} -- originalProps[player] = { [partName] = {Size, Transparency, BrickColor, Material, CanCollide} }
 
 local function storeOriginal(player, partName)
     if not player or not player.Character then return end
-    local key = userKey(player)
-    originalProps[key] = originalProps[key] or {}
-    if originalProps[key][partName] then return end -- already saved
-
+    if not originalProps[player] then originalProps[player] = {} end
+    if originalProps[player][partName] then return end -- already saved
     local part = player.Character:FindFirstChild(partName)
     if part and part:IsA("BasePart") then
-        local data = {}
-        data.Size = part.Size
-        data.Transparency = part.Transparency
-        data.BrickColor = part.BrickColor
-        data.Material = part.Material
-        data.CanCollide = part.CanCollide
-        pcall(function() data.CanQuery = part.CanQuery end)
-        captureAndRemoveMesh(part, data)
-        originalProps[key][partName] = data
+        originalProps[player][partName] = {
+            Size = part.Size,
+            Transparency = part.Transparency,
+            BrickColor = part.BrickColor,
+            Material = part.Material,
+            CanCollide = part.CanCollide,
+        }
     end
 end
 
 local function applyToPlayer(player)
     if not player or not player.Character then return end
-    if player == LocalPlayer then return end
-
-    if _G.TeamCheck and hasTeams() then
-        if player.Team == LocalPlayer.Team then
-            return
-        end
-    end
-
+    if player == LocalPlayer then return end -- keep same exclusion as original
     pcall(function()
-        local targetPart = player.Character:FindFirstChild(_G.TargetPart)
-        if not targetPart or not targetPart:IsA("BasePart") then
-            targetPart = player.Character:FindFirstChild("HumanoidRootPart")
-            if not targetPart then return end
+        local part = player.Character:FindFirstChild(_G.TargetPart)
+        if not part or not part:IsA("BasePart") then
+            -- fallback to HumanoidRootPart if requested target missing
+            part = player.Character:FindFirstChild("HumanoidRootPart")
+            if not part then return end
         end
 
-        storeOriginal(player, targetPart.Name)
-
-        targetPart.Size = Vector3.new(_G.HeadSize, _G.HeadSize, _G.HeadSize)
-        targetPart.Transparency = 0.7
-        targetPart.BrickColor = BrickColor.new("Really blue")
-        targetPart.Material = Enum.Material.Neon
-        targetPart.CanCollide = false
-        pcall(function() targetPart.CanQuery = false end)
-        -- mesh removal for Head handled in storeOriginal
+        storeOriginal(player, part.Name)
+        part.Size = Vector3.new(_G.HeadSize, _G.HeadSize, _G.HeadSize)
+        part.Transparency = 0.7
+        part.BrickColor = BrickColor.new("Really blue")
+        part.Material = Enum.Material.Neon
+        part.CanCollide = false
     end)
 end
 
 local function restorePlayer(player)
     if not player then return end
-    local key = userKey(player)
-    local data = originalProps[key]
+    local data = originalProps[player]
     if not data or not player.Character then
-        originalProps[key] = nil
+        originalProps[player] = nil
         return
     end
 
     for partName, props in pairs(data) do
         local part = player.Character:FindFirstChild(partName)
         if part and part:IsA("BasePart") and props then
+            -- restore saved properties
             pcall(function()
-                if props.Size then part.Size = props.Size end
-                if props.Transparency then part.Transparency = props.Transparency end
-                if props.BrickColor then part.BrickColor = props.BrickColor end
-                if props.Material then part.Material = props.Material end
-                if props.CanCollide ~= nil then part.CanCollide = props.CanCollide end
-                if props.CanQuery ~= nil then pcall(function() part.CanQuery = props.CanQuery end) end
-                if props.mesh then recreateMesh(part, props.mesh) end
+                part.Size = props.Size
+                part.Transparency = props.Transparency
+                part.BrickColor = props.BrickColor
+                part.Material = props.Material
+                part.CanCollide = props.CanCollide
             end)
         end
     end
 
-    originalProps[key] = nil
+    originalProps[player] = nil
 end
 
 local function restoreAll()
@@ -158,63 +82,44 @@ local function restoreAll()
     end
 end
 
--- Ensure we clean up & restore when character is removed or player dies
-local function onCharacterAdded(player, character)
-    if player == LocalPlayer then return end
-
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid.Died:Connect(function()
-            restorePlayer(player)
-        end)
-    end
-
-    character.AncestryChanged:Connect(function(_, parent)
-        if not parent then
-            restorePlayer(player)
-        end
-    end)
-
-    if _G.Disabled then
-        wait(0.1)
-        applyToPlayer(player)
-    end
-end
-
+-- Reapply or restore on CharacterAdded
 Players.PlayerAdded:Connect(function(player)
     if player == LocalPlayer then return end
-    player.CharacterAdded:Connect(function(char) onCharacterAdded(player, char) end)
-    player.CharacterRemoving:Connect(function() restorePlayer(player) end)
+    player.CharacterAdded:Connect(function()
+        -- small delay to allow parts to exist
+        wait(0.1)
+        if _G.Disabled then
+            applyToPlayer(player)
+        end
+    end)
 end)
 
+-- If the script starts after players are already present, connect their CharacterAdded and maybe apply
 for _, player in ipairs(Players:GetPlayers()) do
     if player ~= LocalPlayer then
-        if player.Character then
-            onCharacterAdded(player, player.Character)
+        player.CharacterAdded:Connect(function()
+            wait(0.1)
+            if _G.Disabled then applyToPlayer(player) end
+        end)
+        -- if character already exists, apply immediately if enabled
+        if player.Character and _G.Disabled then
+            applyToPlayer(player)
         end
-        player.CharacterAdded:Connect(function(char) onCharacterAdded(player, char) end)
-        player.CharacterRemoving:Connect(function() restorePlayer(player) end)
     end
 end
 
+-- RenderStepped loop preserving original behavior: when _G.Disabled is true we apply the hitbox
 RunService.RenderStepped:Connect(function()
     if _G.Disabled then
         for _, v in next, Players:GetPlayers() do
             if v ~= LocalPlayer then
-                if v.Character then
-                    applyToPlayer(v)
-                end
+                applyToPlayer(v)
             end
         end
     end
 end)
 
-Players.PlayerRemoving:Connect(function(player)
-    restorePlayer(player)
-    originalProps[userKey(player)] = nil
-end)
-
--- ---------- GUI (created under PlayerGui at runtime) ----------
+-- Create the GUI
 local playerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 -- Remove existing GUI with same name to avoid duplicates
@@ -227,163 +132,164 @@ screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 260, 0, 170)
+frame.Size = UDim2.new(0, 220, 0, 180)
 frame.Position = UDim2.new(0, 10, 0, 10)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
 frame.Parent = screenGui
 
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 28)
+title.Size = UDim2.new(1, 0, 0, 24)
 title.Position = UDim2.new(0, 0, 0, 0)
 title.BackgroundTransparency = 1
 title.Text = "JanBlox Gui Pro Version"
 title.TextColor3 = Color3.new(1,1,1)
 title.Font = Enum.Font.GothamBold
-title.TextSize = 16
+title.TextSize = 14
 title.Parent = frame
 
-local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(1, -10, 0, 36)
-statusLabel.Position = UDim2.new(0, 5, 0, 28)
-statusLabel.BackgroundTransparency = 1
-statusLabel.TextColor3 = Color3.new(1,1,1)
-statusLabel.Font = Enum.Font.Gotham
-statusLabel.TextSize = 14
-statusLabel.TextWrapped = true
-statusLabel.Text = ""
-statusLabel.Parent = frame
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleHitboxButton"
+toggleButton.Size = UDim2.new(1, -10, 0, 34)
+toggleButton.Position = UDim2.new(0, 5, 0, 30)
+toggleButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+toggleButton.TextColor3 = Color3.new(1,1,1)
+toggleButton.Font = Enum.Font.Gotham
+toggleButton.TextSize = 14
+toggleButton.Text = "Toggle Hitbox"
+toggleButton.Parent = frame
 
-local btnToggle = Instance.new("TextButton")
-btnToggle.Name = "ToggleHitboxButton"
-btnToggle.Size = UDim2.new(0.48, -6, 0, 30)
-btnToggle.Position = UDim2.new(0, 5, 0, 70)
-btnToggle.BackgroundColor3 = Color3.fromRGB(50,50,50)
-btnToggle.TextColor3 = Color3.new(1,1,1)
-btnToggle.Font = Enum.Font.Gotham
-btnToggle.TextSize = 14
-btnToggle.Text = "Toggle Hitbox"
-btnToggle.Parent = frame
+local changeButton = Instance.new("TextButton")
+changeButton.Name = "ChangeHitboxButton"
+changeButton.Size = UDim2.new(1, -10, 0, 34)
+changeButton.Position = UDim2.new(0, 5, 0, 66)
+changeButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+changeButton.TextColor3 = Color3.new(1,1,1)
+changeButton.Font = Enum.Font.Gotham
+changeButton.TextSize = 14
+changeButton.Text = "Change Hitbox"
+changeButton.Parent = frame
 
-local btnChange = Instance.new("TextButton")
-btnChange.Name = "ChangeHitboxButton"
-btnChange.Size = UDim2.new(0.48, -6, 0, 30)
-btnChange.Position = UDim2.new(0.52, 1, 0, 70)
-btnChange.BackgroundColor3 = Color3.fromRGB(50,50,50)
-btnChange.TextColor3 = Color3.new(1,1,1)
-btnChange.Font = Enum.Font.Gotham
-btnChange.TextSize = 14
-btnChange.Text = "Change Hitbox"
-btnChange.Parent = frame
+-- Hitbox Size Control Section
+local sizeLabel = Instance.new("TextLabel")
+sizeLabel.Size = UDim2.new(1, -10, 0, 16)
+sizeLabel.Position = UDim2.new(0, 5, 0, 102)
+sizeLabel.BackgroundTransparency = 1
+sizeLabel.Text = "Hitbox Size: " .. tostring(_G.HeadSize)
+sizeLabel.TextColor3 = Color3.new(1,1,1)
+sizeLabel.Font = Enum.Font.Gotham
+sizeLabel.TextSize = 12
+sizeLabel.Parent = frame
 
-local btnDecrease = Instance.new("TextButton")
-btnDecrease.Name = "DecreaseSizeButton"
-btnDecrease.Size = UDim2.new(0.48, -6, 0, 30)
-btnDecrease.Position = UDim2.new(0, 5, 0, 106)
-btnDecrease.BackgroundColor3 = Color3.fromRGB(50,50,50)
-btnDecrease.TextColor3 = Color3.new(1,1,1)
-btnDecrease.Font = Enum.Font.Gotham
-btnDecrease.TextSize = 14
-btnDecrease.Text = "- Decrease"
-btnDecrease.Parent = frame
+local sizeButtonContainer = Instance.new("Frame")
+sizeButtonContainer.Size = UDim2.new(1, -10, 0, 30)
+sizeButtonContainer.Position = UDim2.new(0, 5, 0, 120)
+sizeButtonContainer.BackgroundTransparency = 1
+sizeButtonContainer.Parent = frame
 
-local btnIncrease = Instance.new("TextButton")
-btnIncrease.Name = "IncreaseSizeButton"
-btnIncrease.Size = UDim2.new(0.48, -6, 0, 30)
-btnIncrease.Position = UDim2.new(0.52, 1, 0, 106)
-btnIncrease.BackgroundColor3 = Color3.fromRGB(50,50,50)
-btnIncrease.TextColor3 = Color3.new(1,1,1)
-btnIncrease.Font = Enum.Font.Gotham
-btnIncrease.TextSize = 14
-btnIncrease.Text = "+ Increase"
-btnIncrease.Parent = frame
+local minusButton = Instance.new("TextButton")
+minusButton.Name = "MinusButton"
+minusButton.Size = UDim2.new(0, 50, 1, 0)
+minusButton.Position = UDim2.new(0, 0, 0, 0)
+minusButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+minusButton.TextColor3 = Color3.new(1,1,1)
+minusButton.Font = Enum.Font.GothamBold
+minusButton.TextSize = 16
+minusButton.Text = "-"
+minusButton.Parent = sizeButtonContainer
 
-local btnTeamCheck = Instance.new("TextButton")
-btnTeamCheck.Name = "ToggleTeamCheckButton"
-btnTeamCheck.Size = UDim2.new(1, -10, 0, 30)
-btnTeamCheck.Position = UDim2.new(0, 5, 0, 142)
-btnTeamCheck.BackgroundColor3 = Color3.fromRGB(50,50,50)
-btnTeamCheck.TextColor3 = Color3.new(1,1,1)
-btnTeamCheck.Font = Enum.Font.Gotham
-btnTeamCheck.TextSize = 14
-btnTeamCheck.Text = "Toggle Team Check"
-btnTeamCheck.Parent = frame
+local sizeDisplay = Instance.new("TextLabel")
+sizeDisplay.Size = UDim2.new(0, 70, 1, 0)
+sizeDisplay.Position = UDim2.new(0, 55, 0, 0)
+sizeDisplay.BackgroundColor3 = Color3.fromRGB(40,40,40)
+sizeDisplay.TextColor3 = Color3.new(1,1,1)
+sizeDisplay.Font = Enum.Font.GothamBold
+sizeDisplay.TextSize = 14
+sizeDisplay.Text = tostring(_G.HeadSize)
+sizeDisplay.Parent = sizeButtonContainer
 
-local function updateStatusLabel()
-    local tpart = tostring(_G.TargetPart or "HumanoidRootPart")
-    local size = tostring(_G.HeadSize or 0)
-    local teamText = _G.TeamCheck and "(ON)" or "(OFF)"
-    statusLabel.Text = ("Target: %s    Size: %s    TeamCheck: %s"):format(tpart, size, teamText)
-end
+local plusButton = Instance.new("TextButton")
+plusButton.Name = "PlusButton"
+plusButton.Size = UDim2.new(0, 50, 1, 0)
+plusButton.Position = UDim2.new(0, 130, 0, 0)
+plusButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+plusButton.TextColor3 = Color3.new(1,1,1)
+plusButton.Font = Enum.Font.GothamBold
+plusButton.TextSize = 16
+plusButton.Text = "+"
+plusButton.Parent = sizeButtonContainer
 
-btnToggle.MouseButton1Click:Connect(function()
+-- Button behaviors
+toggleButton.MouseButton1Click:Connect(function()
+    -- Toggle according to your original pattern: when _G.Disabled == true, the hitbox is active.
     _G.Disabled = not _G.Disabled
+
     if not _G.Disabled then
+        -- turning hitbox OFF -> restore everything
         restoreAll()
     else
+        -- turning hitbox ON -> apply to all players (will store originals)
         for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character then
+            if p ~= LocalPlayer then
                 applyToPlayer(p)
             end
         end
     end
-    updateStatusLabel()
 end)
 
-btnChange.MouseButton1Click:Connect(function()
+changeButton.MouseButton1Click:Connect(function()
+    -- Switch between HumanoidRootPart and Head
+    -- before switching, restore previous changes so we don't leave modified parts behind
     restoreAll()
     if _G.TargetPart == "HumanoidRootPart" then
         _G.TargetPart = "Head"
     else
         _G.TargetPart = "HumanoidRootPart"
     end
+    -- If currently enabled, apply to new target immediately
     if _G.Disabled then
         for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character then
+            if p ~= LocalPlayer then
                 applyToPlayer(p)
             end
         end
     end
-    updateStatusLabel()
 end)
 
-btnDecrease.MouseButton1Click:Connect(function()
-    _G.HeadSize = math.max(1, (_G.HeadSize or 5) - SIZE_STEP)
+minusButton.MouseButton1Click:Connect(function()
+    -- Decrease size by 5, minimum is 5
+    if _G.HeadSize > 5 then
+        _G.HeadSize = _G.HeadSize - 5
+    end
+    
+    sizeDisplay.Text = tostring(_G.HeadSize)
+    sizeLabel.Text = "Hitbox Size: " .. tostring(_G.HeadSize)
+    
+    -- If hitbox is currently enabled, reapply to all players
     if _G.Disabled then
         for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character then
+            if p ~= LocalPlayer then
                 applyToPlayer(p)
             end
         end
     end
-    updateStatusLabel()
 end)
 
-btnIncrease.MouseButton1Click:Connect(function()
-    _G.HeadSize = (_G.HeadSize or 5) + SIZE_STEP
+plusButton.MouseButton1Click:Connect(function()
+    -- Increase size by 5, maximum is 50
+    if _G.HeadSize < 50 then
+        _G.HeadSize = _G.HeadSize + 5
+    end
+    
+    sizeDisplay.Text = tostring(_G.HeadSize)
+    sizeLabel.Text = "Hitbox Size: " .. tostring(_G.HeadSize)
+    
+    -- If hitbox is currently enabled, reapply to all players
     if _G.Disabled then
         for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character then
+            if p ~= LocalPlayer then
                 applyToPlayer(p)
             end
         end
     end
-    updateStatusLabel()
 end)
-
-btnTeamCheck.MouseButton1Click:Connect(function()
-    _G.TeamCheck = not _G.TeamCheck
-    -- when toggling team check we should reapply/restore appropriately
-    restoreAll()
-    if _G.Disabled then
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character then
-                applyToPlayer(p)
-            end
-        end
-    end
-    updateStatusLabel()
-end)
-
--- initial status
-updateStatusLabel()
