@@ -74,6 +74,38 @@ local function restorePlayer(player)
     originalProps[player] = nil
 end
 
+local function restorePlayerFully(player)
+    if not player or not player.Character then return end
+    
+    -- Restore both HumanoidRootPart and Head
+    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+    local head = player.Character:FindFirstChild("Head")
+    
+    if hrp and originalProps[player] and originalProps[player]["HumanoidRootPart"] then
+        local props = originalProps[player]["HumanoidRootPart"]
+        pcall(function()
+            hrp.Size = props.Size
+            hrp.Transparency = props.Transparency
+            hrp.BrickColor = props.BrickColor
+            hrp.Material = props.Material
+            hrp.CanCollide = props.CanCollide
+        end)
+    end
+    
+    if head and originalProps[player] and originalProps[player]["Head"] then
+        local props = originalProps[player]["Head"]
+        pcall(function()
+            head.Size = props.Size
+            head.Transparency = props.Transparency
+            head.BrickColor = props.BrickColor
+            head.Material = props.Material
+            head.CanCollide = props.CanCollide
+        end)
+    end
+    
+    originalProps[player] = nil
+end
+
 local function restoreAll()
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
@@ -86,6 +118,8 @@ end
 Players.PlayerAdded:Connect(function(player)
     if player == LocalPlayer then return end
     player.CharacterAdded:Connect(function()
+        -- Clear old data for this player
+        originalProps[player] = nil
         -- small delay to allow parts to exist
         wait(0.1)
         if _G.Disabled then
@@ -98,6 +132,8 @@ end)
 for _, player in ipairs(Players:GetPlayers()) do
     if player ~= LocalPlayer then
         player.CharacterAdded:Connect(function()
+            -- Clear old data for this player
+            originalProps[player] = nil
             wait(0.1)
             if _G.Disabled then applyToPlayer(player) end
         end)
@@ -115,9 +151,9 @@ RunService.RenderStepped:Connect(function()
         for _, v in next, Players:GetPlayers() do
             if v ~= LocalPlayer and v.Character then
                 local humanoid = v.Character:FindFirstChild("Humanoid")
-                -- If player is dead (Health <= 0), restore their parts
+                -- If player is dead (Health <= 0), restore their parts FULLY
                 if humanoid and humanoid.Health <= 0 then
-                    restorePlayer(v)
+                    restorePlayerFully(v)
                 else
                     -- If player is alive, apply hitbox
                     applyToPlayer(v)
