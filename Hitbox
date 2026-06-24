@@ -1,7 +1,8 @@
--- JanBlox Gui Pro Version Me and Jarvis AI made
+-- JanBlox Gui Pro Version made by Jarvis and Me
+-- Core Settings, Shared Global States, and Anti-Cheat Proxy Utilities
 
 _G.HeadSize = 5
-_G.RootSize = 5 
+_G.RootSize = 5
 _G.HitboxScaleMode = "Medium" -- "Small", "Medium", "Large"
 _G.HitboxTransparency = 0.5
 _G.Disabled = true 
@@ -120,6 +121,8 @@ _G.CoreUtils = {
     LocalPlayer = LocalPlayer
 }
 
+-- Hitbox Processing Engine and Player Recovery Framework
+
 local utils = _G.CoreUtils
 local Players, RunService, Workspace, LocalPlayer = utils.Players, utils.RunService, utils.Workspace, utils.LocalPlayer
 local originalProps, npcHitboxes = _G.OriginalProps, _G.NpcHitboxes
@@ -225,6 +228,8 @@ _G.Mechanics = {
         _G.TrackedNPCs = {}
     end
 }
+
+-- Environment Graphics Adaptation Framework (ESP Core Engine)
 
 local utils = _G.CoreUtils
 local Players, Workspace, LocalPlayer = utils.Players, utils.Workspace, utils.LocalPlayer
@@ -356,6 +361,8 @@ _G.FlingEngine = {
     end
 }
 
+-- Dynamic Scaling Pipeline and Multi-Threading Simulation Hook
+
 local utils = _G.CoreUtils
 local mech = _G.Mechanics
 local graphics = _G.GraphicsEngine
@@ -419,6 +426,7 @@ _G.Pipeline = {
 }
 
 -- Main Modular Interface Blueprint and Simulation Control Rig
+
 local utils = _G.CoreUtils
 local mech = _G.Mechanics
 local graphics = _G.GraphicsEngine
@@ -850,7 +858,21 @@ end
 Players.PlayerAdded:Connect(connectCharacter)
 for _, p in ipairs(Players:GetPlayers()) do if p ~= LocalPlayer then connectCharacter(p); if p.Character then globalESPUpdate() end end end
 
-if _G.Disabled then
+local npcScanCooldown = 0
+RunService.RenderStepped:Connect(function()
+    if _G.InventoryLock then pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true) end) end
+
+    if _G.PlayerModEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        local myHumanoid = LocalPlayer.Character.Humanoid
+        myHumanoid.UseJumpPower = true 
+        if myHumanoid.WalkSpeed ~= _G.CustomWalkSpeed then myHumanoid.WalkSpeed = _G.CustomWalkSpeed end
+        if myHumanoid.JumpPower ~= _G.CustomJumpPower then myHumanoid.JumpPower = _G.CustomJumpPower end
+    end
+
+    for p, _ in pairs(playerLabels) do if p then updateESPLabel(p) end end
+    for npc, _ in pairs(npcLabels) do if npc then updateNPCLabel(npc) end end
+    
+    if _G.Disabled then
         for _, v in next, Players:GetPlayers() do
             if v ~= LocalPlayer and v.Character then
                 local hum = v.Character:FindFirstChildOfClass("Humanoid")
