@@ -32,6 +32,14 @@ end
 local function applyToPlayer(player)
     if not player or not player.Character then return end
     if player == LocalPlayer then return end -- keep same exclusion as original
+    
+    -- Check if player is alive
+    local humanoid = player.Character:FindFirstChild("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then
+        restorePlayer(player)
+        return
+    end
+    
     pcall(function()
         local part = player.Character:FindFirstChild(_G.TargetPart)
         if not part or not part:IsA("BasePart") then
@@ -170,12 +178,12 @@ changeButton.TextSize = 14
 changeButton.Text = "Change Hitbox"
 changeButton.Parent = frame
 
--- Hitbox Size Control Section
+-- Hitbox Limit Control Section
 local sizeLabel = Instance.new("TextLabel")
 sizeLabel.Size = UDim2.new(1, -10, 0, 16)
 sizeLabel.Position = UDim2.new(0, 5, 0, 102)
 sizeLabel.BackgroundTransparency = 1
-sizeLabel.Text = "Hitbox Size: " .. tostring(_G.HeadSize)
+sizeLabel.Text = "HitBox Limit (50)"
 sizeLabel.TextColor3 = Color3.new(1,1,1)
 sizeLabel.Font = Enum.Font.Gotham
 sizeLabel.TextSize = 12
@@ -190,7 +198,7 @@ sizeButtonContainer.Parent = frame
 local minusButton = Instance.new("TextButton")
 minusButton.Name = "MinusButton"
 minusButton.Size = UDim2.new(0, 50, 1, 0)
-minusButton.Position = UDim2.new(0, 0, 0, 0)
+minusButton.Position = UDim2.new(0, 35, 0, 0)
 minusButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
 minusButton.TextColor3 = Color3.new(1,1,1)
 minusButton.Font = Enum.Font.GothamBold
@@ -200,7 +208,7 @@ minusButton.Parent = sizeButtonContainer
 
 local sizeDisplay = Instance.new("TextLabel")
 sizeDisplay.Size = UDim2.new(0, 70, 1, 0)
-sizeDisplay.Position = UDim2.new(0, 55, 0, 0)
+sizeDisplay.Position = UDim2.new(0, 90, 0, 0)
 sizeDisplay.BackgroundColor3 = Color3.fromRGB(40,40,40)
 sizeDisplay.TextColor3 = Color3.new(1,1,1)
 sizeDisplay.Font = Enum.Font.GothamBold
@@ -211,7 +219,7 @@ sizeDisplay.Parent = sizeButtonContainer
 local plusButton = Instance.new("TextButton")
 plusButton.Name = "PlusButton"
 plusButton.Size = UDim2.new(0, 50, 1, 0)
-plusButton.Position = UDim2.new(0, 130, 0, 0)
+plusButton.Position = UDim2.new(0, 165, 0, 0)
 plusButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
 plusButton.TextColor3 = Color3.new(1,1,1)
 plusButton.Font = Enum.Font.GothamBold
@@ -263,7 +271,6 @@ minusButton.MouseButton1Click:Connect(function()
     end
     
     sizeDisplay.Text = tostring(_G.HeadSize)
-    sizeLabel.Text = "Hitbox Size: " .. tostring(_G.HeadSize)
     
     -- If hitbox is currently enabled, reapply to all players
     if _G.Disabled then
@@ -282,7 +289,6 @@ plusButton.MouseButton1Click:Connect(function()
     end
     
     sizeDisplay.Text = tostring(_G.HeadSize)
-    sizeLabel.Text = "Hitbox Size: " .. tostring(_G.HeadSize)
     
     -- If hitbox is currently enabled, reapply to all players
     if _G.Disabled then
