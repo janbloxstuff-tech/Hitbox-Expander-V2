@@ -373,40 +373,56 @@ screenGui.ResetOnSpawn = false
 screenGui.DisplayOrder = 999
 screenGui.Parent = playerGui
 
--- Safe Interstitial Notice System (Responsive Mobile Layout)
+-- Safe Interstitial Notice System (Centered Mobile Modal Overlay)
 local noticeFrame = Instance.new("Frame")
-noticeFrame.Size = UDim2.new(100, 0, 100, 0)
-noticeFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-noticeFrame.ZIndex = 10000
+noticeFrame.Size = UDim2.new(0.85, 0, 0, 260)
+noticeFrame.Position = UDim2.new(0.075, 0, 0.5, -130)
+noticeFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+noticeFrame.BackgroundTransparency = 0.05
+noticeFrame.ZIndex = 10000 -- Background layer
 noticeFrame.Parent = screenGui
 
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(0, 10)
+uiCorner.Parent = noticeFrame
+
+local uiStroke = Instance.new("UIStroke")
+uiStroke.Color = Color3.fromRGB(255, 200, 255)
+uiStroke.Thickness = 1.5
+uiStroke.Transparency = 0.5
+uiStroke.Parent = noticeFrame
+
 local noticeLabel = Instance.new("TextLabel")
--- Scale width dynamically to 85% of whatever your screen size is so it never clips off-screen
-noticeLabel.Size = UDim2.new(0.85, 0, 0, 180)
-noticeLabel.Position = UDim2.new(0.075, 0, 0.25, 0)
+noticeLabel.Size = UDim2.new(0.9, 0, 0, 160)
+noticeLabel.Position = UDim2.new(0.05, 0, 0.05, 0)
 noticeLabel.BackgroundTransparency = 1
 noticeLabel.TextColor3 = Color3.fromRGB(255, 200, 255)
 noticeLabel.Font = Enum.Font.GothamBold
-noticeLabel.TextSize = 13 -- Slightly smaller text size so it fits neatly on phone layouts
+noticeLabel.TextSize = 12 
 noticeLabel.TextWrapped = true
+noticeLabel.ZIndex = 10001 -- THE FIX: Forces text to render IN FRONT of the frame
+noticeLabel.Parent = noticeFrame
 
 local localName = "User"
 pcall(function() localName = LocalPlayer.Name end)
 noticeLabel.Text = "Hello there " .. localName .. ",\nyou are using my script and make sure to give me credit if you're making a video as well.\n\nAlso you can add feedback to the GUI about what I should add next or if you found an issue!\n\nThank you for being a good person for now and good boy :3 or good girl :3"
-noticeLabel.Parent = noticeFrame
 
 local skipBtn = Instance.new("TextButton")
-skipBtn.Size = UDim2.new(0.4, 0, 0, 40) -- Responsive button width
-skipBtn.Position = UDim2.new(0.3, 0, 0.65, 0) -- Raised position so it doesn't get cut off by mobile UI
-skipBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+skipBtn.Size = UDim2.new(0.5, 0, 0, 38)
+skipBtn.Position = UDim2.new(0.25, 0, 0.75, 0) 
+skipBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 skipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 skipBtn.Font = Enum.Font.GothamBold
-skipBtn.TextSize = 14
+skipBtn.TextSize = 13
 skipBtn.Text = "OK (3)"
+skipBtn.ZIndex = 10001 -- THE FIX: Forces the button to render IN FRONT of the frame
 skipBtn.Parent = noticeFrame
 
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 6)
+btnCorner.Parent = skipBtn
+
 task.spawn(function()
-    -- Safety self-destruct fallback just in case
     task.delay(6, function() if noticeFrame and noticeFrame.Parent then noticeFrame:Destroy() end end)
     
     for i = 3, 1, -1 do
