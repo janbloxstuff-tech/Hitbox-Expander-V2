@@ -1,7 +1,7 @@
 -- JanBlox Gui Pro Version Me and Jarvis AI made
 
 _G.HeadSize = 5
-_G.RootSize = 2 
+_G.RootSize = 5 
 _G.HitboxScaleMode = "Medium" -- "Small", "Medium", "Large"
 _G.HitboxTransparency = 0.5
 _G.Disabled = true 
@@ -794,14 +794,14 @@ flingBtn.MouseButton1Click:Connect(function() flingEngine.fling(flingInput.Text)
 
 szMin.MouseButton1Click:Connect(function() if _G.HeadSize > 5 then _G.HeadSize = _G.HeadSize - 5 end; szDisp.Text = tostring(_G.HeadSize) end)
 szPls.MouseButton1Click:Connect(function() if _G.HeadSize < 100 then _G.HeadSize = _G.HeadSize + 5 end; szDisp.Text = tostring(_G.HeadSize) end)
-rtMin.MouseButton1Click:Connect(function() if _G.RootSize > 2 then _G.RootSize = _G.RootSize - 2 end; rtDisp.Text = tostring(_G.RootSize) end)
-rtPls.MouseButton1Click:Connect(function() if _G.RootSize < 100 then _G.RootSize = _G.RootSize + 2 end; rtDisp.Text = tostring(_G.RootSize) end)
+rtMin.MouseButton1Click:Connect(function() if _G.RootSize > 2 then _G.RootSize = _G.RootSize - 5 end; rtDisp.Text = tostring(_G.RootSize) end)
+rtPls.MouseButton1Click:Connect(function() if _G.RootSize < 100 then _G.RootSize = _G.RootSize + 5 end; rtDisp.Text = tostring(_G.RootSize) end)
 
 trMin.MouseButton1Click:Connect(function() _G.HitboxTransparency = math.max(0, _G.HitboxTransparency - 0.1); trDisp.Text = string.format("%.1f", _G.HitboxTransparency) end)
 trPls.MouseButton1Click:Connect(function() _G.HitboxTransparency = math.min(1, _G.HitboxTransparency + 0.1); trDisp.Text = string.format("%.1f", _G.HitboxTransparency) end)
 
-wsMin.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomWalkSpeed = math.max(0, _G.CustomWalkSpeed - 5); wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
-wsPls.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomWalkSpeed = _G.CustomWalkSpeed + 5; wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
+wsMin.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomWalkSpeed = math.max(0, _G.CustomWalkSpeed - 2); wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
+wsPls.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomWalkSpeed = _G.CustomWalkSpeed + 2; wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
 jpMin.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomJumpPower = math.max(0, _G.CustomJumpPower - 10); jpDisp.Text = tostring(_G.CustomJumpPower) end)
 jpPls.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomJumpPower = _G.CustomJumpPower + 10; jpDisp.Text = tostring(_G.CustomJumpPower) end)
 
