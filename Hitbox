@@ -1,11 +1,11 @@
--- JanBlox Gui Pro Version
+-- JanBlox Gui Pro Version made by Jarvis and Me
 -- PART 1: Core Settings, Global States, and Anti-Cheat Multi-Proxy Controls
 
 _G.HeadSize = 5
 _G.RootSize = 5
 _G.HitboxScaleMode = "Medium"
 _G.HitboxTransparency = 0.5
-_G.Disabled = false -- False = Script active (Hitbox running)
+_G.Disabled = true 
 _G.TargetPart = "HumanoidRootPart"
 _G.NPCHitbox = false
 _G.ESPEnabled = false
@@ -22,7 +22,7 @@ _G.CustomWalkSpeed = 16
 _G.CustomJumpPower = 50
 _G.PlayerModEnabled = false
 _G.FreezeAnimation = false
-_G.DayNightToggle = false 
+_G.DayNightToggle = false -- false = Normal, true = Night Force
 _G.LoopFullBright = false
 
 -- Dynamic Filter Collections
@@ -85,6 +85,7 @@ _G.CoreUtils = {
 }
 -- JanBlox Gui Pro Version
 -- PART 2: Memory Registration Framework & Object Recovery
+
 local utils = _G.CoreUtils
 local Players, LocalPlayer = utils.Players, utils.LocalPlayer
 local originalProps, npcHitboxes, hiddenGuis = _G.OriginalProps, _G.NpcHitboxes, _G.HiddenGuis
@@ -123,6 +124,10 @@ local function restorePlayer(player)
     if player.Character then
         local hum = player.Character:FindFirstChildOfClass("Humanoid")
         if hum then utils.safeSetProperty(hum, "DisplayDistanceType", Enum.HumanoidDisplayDistanceType.Viewer) end
+        if hiddenGuis[player] then
+            for _, gui in ipairs(hiddenGuis[player]) do if gui and gui.Parent then utils.safeSetProperty(gui, "Enabled", true) end end
+            hiddenGuis[player] = nil
+        end
     end
     if not data then originalProps[player] = nil; return end
     if player.Character then
@@ -144,6 +149,10 @@ end
 local function restoreNPC(npc)
     if not npc then return end
     local data = npcHitboxes[npc]
+    if hiddenGuis[npc] then
+        for _, gui in ipairs(hiddenGuis[npc]) do if gui and gui.Parent then utils.safeSetProperty(gui, "Enabled", true) end end
+        hiddenGuis[npc] = nil
+    end
     local hum = npc:FindFirstChildOfClass("Humanoid")
     if hum then utils.safeSetProperty(hum, "DisplayDistanceType", Enum.HumanoidDisplayDistanceType.Viewer) end
     if not data then return end
@@ -175,12 +184,14 @@ _G.Mechanics = {
     end,
     restoreAllNPCs = function()
         for npc, _ in pairs(npcHitboxes) do restoreNPC(npc) end
+        _G.TrackedNPCs = {}
     end,
     storeOriginal = storeOriginal,
     storeNPCOriginal = storeNPCOriginal
 }
 -- JanBlox Gui Pro Version
 -- PART 3: Graphics Modification Engine, ESP, and Teleport Pipeline
+
 local utils = _G.CoreUtils
 local espHighlights, playerLabels, npcLabels = _G.EspHighlights, _G.PlayerLabels, _G.NpcLabels
 
@@ -196,15 +207,12 @@ _G.GraphicsEngine = {
     end,
     createESPHighlight = function(player)
         if not player.Character then return end
-        local existing = player.Character:FindFirstChild("JanHighlight")
-        if existing then return end
+        for _, c in ipairs(player.Character:GetChildren()) do if c:IsA("Highlight") then pcall(function() c:Destroy() end) end end
         pcall(function()
             local hl = Instance.new("Highlight")
-            hl.Name = "JanHighlight"
             hl.Adornee = player.Character
             hl.FillColor = utils.getTeamColor(player)
-            hl.OutlineColor = Color3.fromRGB(255,255,255)
-            hl.FillTransparency = 0.5
+            hl.OutlineColor = utils.getTeamColor(player)
             hl.Parent = player.Character
             espHighlights[player] = hl
         end)
@@ -219,7 +227,6 @@ _G.GraphicsEngine = {
             bGui.Size = UDim2.new(4, 0, 1.5, 0)
             bGui.AlwaysOnTop = true
             bGui.MaxDistance = math.huge
-            bGui.ExtentsOffset = Vector3.new(0, 3, 0)
             bGui.Name = "ESPLabel_" .. player.Name
             bGui.Parent = root
             local lbl = Instance.new("TextLabel")
@@ -236,11 +243,10 @@ _G.GraphicsEngine = {
         pcall(function()
             local bGui = Instance.new("BillboardGui")
             bGui.Size = UDim2.new(4, 0, 1.5, 0); bGui.AlwaysOnTop = true; bGui.MaxDistance = math.huge
-            bGui.ExtentsOffset = Vector3.new(0, 3, 0)
             bGui.Name = "NPCESP_" .. npc.Name; bGui.Parent = root
             local lbl = Instance.new("TextLabel")
             lbl.BackgroundTransparency = 1; lbl.Size = UDim2.new(1,0,1,0); lbl.Font = Enum.Font.GothamBold
-            lbl.TextSize = 13; lbl.TextColor3 = Color3.fromRGB(255, 230, 50); lbl.TextStrokeTransparency = 0
+            lbl.TextSize = 13; lbl.TextColor3 = Color3.fromRGB(255, 255, 100); lbl.TextStrokeTransparency = 0
             lbl.TextStrokeColor3 = Color3.fromRGB(0,0,0); lbl.Parent = bGui
             npcLabels[npc] = {gui = bGui, label = lbl}
         end)
@@ -282,9 +288,10 @@ _G.FlingEngine = {
 }
 -- JanBlox Gui Pro Version
 -- PART 4: Scaling Pipelines and Dynamic Rendering Loops
+
 local utils = _G.CoreUtils
 local mech = _G.Mechanics
-local originalProps = _G.OriginalProps
+local originalProps, npcHitboxes = _G.OriginalProps, _G.NpcHitboxes
 
 _G.Pipeline = {
     applyToPlayer = function(player)
@@ -318,8 +325,8 @@ _G.Pipeline = {
             local part = npc:FindFirstChild("Head")
             if not part or not part:IsA("BasePart") then return end
             mech.storeNPCOriginal(npc, part.Name)
-            local tSize = _G.HeadSize
-            if _G.HitboxScaleMode == "Large" then tSize = tSize * 2.5 elseif _G.HitboxScaleMode == "Small" then tSize = tSize * 0.6 end
+            local tSize = 5
+            if _G.HitboxScaleMode == "Large" then tSize = 12.5 elseif _G.HitboxScaleMode == "Small" then tSize = 3 end
             utils.safeSetProperty(part, "Size", Vector3.new(tSize, tSize, tSize))
             utils.safeSetProperty(part, "Transparency", _G.HitboxTransparency)
             utils.safeSetProperty(part, "Material", Enum.Material.SmoothPlastic)
@@ -329,6 +336,7 @@ _G.Pipeline = {
         end)
     end
 }
+
 -- JanBlox Gui Pro Version
 -- PART 5: Interface Generation Framework
 local utils = _G.CoreUtils
@@ -521,6 +529,7 @@ end
 _G.UIBuilders = { createHeader = createHeader, createButton = createButton, createTrackerRow = createTrackerRow, scrollingFrame = scrollingFrame, frame = frame }
 -- JanBlox Gui Pro Version
 -- PART 6: Interactivity Listeners, Teleport Logic, and Advanced Control Loops
+
 local utils = _G.CoreUtils
 local mech = _G.Mechanics
 local graphics = _G.GraphicsEngine
@@ -528,7 +537,7 @@ local pipeline = _G.Pipeline
 local bld = _G.UIBuilders
 
 local Players, RunService, Workspace, Teams, Lighting, LocalPlayer = utils.Players, utils.RunService, utils.Workspace, utils.Teams, utils.Lighting, utils.LocalPlayer
-local playerLabels, npcLabels = _G.PlayerLabels, _G.NpcLabels
+local playerLabels, npcLabels, trackedNPCs = _G.PlayerLabels, _G.NpcLabels, _G.TrackedNPCs
 
 -- UI Pipeline Instantiation
 bld.createHeader("Hitbox Configuration", Color3.fromRGB(100, 200, 255), 1)
@@ -538,7 +547,7 @@ local forcefieldCheckButton = bld.createButton("Check Forcefield: OFF", 3)
 local targetLabel = Instance.new("TextLabel")
 targetLabel.Size = UDim2.new(1, 0, 0, 20); targetLabel.BackgroundTransparency = 1; targetLabel.Text = "Target Part: " .. _G.TargetPart
 targetLabel.TextColor3 = Color3.new(0.5, 1, 0.5); targetLabel.Font = Enum.Font.Gotham; targetLabel.TextSize = 11
-targetLabel.LayoutOrder = 4; targetLabel.ZIndex = 13; targetLabel.Parent = bld.scrollingFrame
+targetLabel.LayoutOrder = 4; targetLabel.Parent = bld.scrollingFrame
 
 local changeButton = bld.createButton("Change Target Part", 5)
 local sizePresetButton = bld.createButton("Hitbox Size: Medium", 6)
@@ -556,11 +565,11 @@ local fullBrightBtn = bld.createButton("Loop FullBright: OFF", 15)
 local graphicsBtn = bld.createButton("Graphics: Level 10", 16)
 
 local flingContainer = Instance.new("Frame")
-flingContainer.Size = UDim2.new(1, 0, 0, 40); flingContainer.BackgroundTransparency = 1; flingContainer.LayoutOrder = 17; flingContainer.ZIndex = 13; flingContainer.Parent = bld.scrollingFrame
+flingContainer.Size = UDim2.new(1, 0, 0, 40); flingContainer.BackgroundTransparency = 1; flingContainer.LayoutOrder = 17; flingContainer.Parent = bld.scrollingFrame
 local flingInput = Instance.new("TextBox")
 flingInput.Size = UDim2.new(1, -70, 1, 0); flingInput.BackgroundColor3 = Color3.fromRGB(45, 45, 45); flingInput.TextColor3 = Color3.new(1, 1, 1)
-flingInput.Font = Enum.Font.Gotham; flingInput.TextSize = 12; flingInput.Text = ""; flingInput.PlaceholderText = "Target Name..."; flingInput.ZIndex = 14; flingInput.Parent = flingContainer
-local flingBtn = bld.createButton("Fling", 2, flingContainer); flingBtn.Size = UDim2.new(0, 65, 1, 0); flingBtn.Position = UDim2.new(1, -65, 0, 0); flingBtn.ZIndex = 14
+flingInput.Font = Enum.Font.Gotham; flingInput.TextSize = 12; flingInput.Text = ""; flingInput.PlaceholderText = "Target Name..."; flingInput.Parent = flingContainer
+local flingBtn = bld.createButton("Fling", 2, flingContainer); flingBtn.Size = UDim2.new(0, 65, 1, 0); flingBtn.Position = UDim2.new(1, -65, 0, 0)
 
 local wsMin, wsPls, wsDisp = bld.createTrackerRow("LocalPlayer Walkspeed", tostring(_G.CustomWalkSpeed), 18)
 local jpMin, jpPls, jpDisp = bld.createTrackerRow("LocalPlayer Jumppower", tostring(_G.CustomJumpPower), 19)
@@ -572,13 +581,9 @@ bld.createHeader("Navigation Framework", Color3.fromRGB(255, 255, 100), 21)
 local teleportDropdownBtn = bld.createButton("Teleport Controls v", 22)
 local teleportDropFrame = Instance.new("Frame")
 teleportDropFrame.Size = UDim2.new(1, 0, 0, 0); teleportDropFrame.BackgroundTransparency = 1; teleportDropFrame.LayoutOrder = 23
-teleportDropFrame.Visible = false; teleportDropFrame.ZIndex = 13; teleportDropFrame.Parent = bld.scrollingFrame
+teleportDropFrame.Visible = false; teleportDropFrame.Parent = bld.scrollingFrame
 local teleportDropLayout = Instance.new("UIListLayout")
 teleportDropLayout.Padding = UDim.new(0, 4); teleportDropLayout.SortOrder = Enum.SortOrder.LayoutOrder; teleportDropLayout.Parent = teleportDropFrame
-
-teleportDropLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    if teleportDropFrame.Visible then teleportDropFrame.Size = UDim2.new(1, 0, 0, teleportDropLayout.AbsoluteContentSize.Y) end
-end)
 
 bld.createHeader("ESP Configuration", Color3.fromRGB(255, 100, 100), 24)
 local espToggleButton = bld.createButton("ESP Master Switch: OFF", 25)
@@ -587,14 +592,9 @@ local teamCheckButton = bld.createButton("ESP Team Check: OFF", 27)
 
 local settingDropdownBtn = bld.createButton("Name and Health Settings v", 28)
 local settingDropFrame = Instance.new("Frame")
-settingDropFrame.Size = UDim2.new(1, 0, 0, 0); settingDropFrame.BackgroundTransparency = 1; settingDropFrame.LayoutOrder = 29; settingDropFrame.Visible = false; settingDropFrame.Parent = bld.scrollingFrame
+settingDropFrame.Size = UDim2.new(1, 0, 0, 80); settingDropFrame.BackgroundTransparency = 1; settingDropFrame.LayoutOrder = 29; settingDropFrame.Visible = false; settingDropFrame.Parent = bld.scrollingFrame
 local settingDropLayout = Instance.new("UIListLayout")
 settingDropLayout.Padding = UDim.new(0, 4); settingDropLayout.SortOrder = Enum.SortOrder.LayoutOrder; settingDropLayout.Parent = settingDropFrame
-
-settingDropLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    if settingDropFrame.Visible then settingDropFrame.Size = UDim2.new(1, 0, 0, settingDropLayout.AbsoluteContentSize.Y) end
-end)
-
 local showNameButton = bld.createButton("Show Name: ON", 1, settingDropFrame)
 local showHealthButton = bld.createButton("Show Health: ON", 2, settingDropFrame)
 
@@ -604,51 +604,7 @@ teamDropFrame.Size = UDim2.new(1, 0, 0, 0); teamDropFrame.BackgroundTransparency
 local teamDropLayout = Instance.new("UIListLayout")
 teamDropLayout.Padding = UDim.new(0, 4); teamDropLayout.SortOrder = Enum.SortOrder.LayoutOrder; teamDropLayout.Parent = teamDropFrame
 
-teamDropLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    if teamDropFrame.Visible then teamDropFrame.Size = UDim2.new(1, 0, 0, teamDropLayout.AbsoluteContentSize.Y) end
-end)
-
--- CONNECTIVES AND FIXES PIPELINE BINDINGS
-szMin.MouseButton1Click:Connect(function() _G.HeadSize = math.max(1, _G.HeadSize - 1); szDisp.Text = tostring(_G.HeadSize) end)
-szPls.MouseButton1Click:Connect(function() _G.HeadSize = _G.HeadSize + 1; szDisp.Text = tostring(_G.HeadSize) end)
-rtMin.MouseButton1Click:Connect(function() _G.RootSize = math.max(1, _G.RootSize - 1); rtDisp.Text = tostring(_G.RootSize) end)
-rtPls.MouseButton1Click:Connect(function() _G.RootSize = _G.RootSize + 1; rtDisp.Text = tostring(_G.RootSize) end)
-trMin.MouseButton1Click:Connect(function() _G.HitboxTransparency = math.max(0, _G.HitboxTransparency - 0.1); trDisp.Text = string.format("%.1f", _G.HitboxTransparency) end)
-trPls.MouseButton1Click:Connect(function() _G.HitboxTransparency = math.min(1, _G.HitboxTransparency + 0.1); trDisp.Text = string.format("%.1f", _G.HitboxTransparency) end)
-
-enableInvButton.MouseButton1Click:Connect(function()
-    _G.InventoryLock = not _G.InventoryLock
-    enableInvButton.Text = "Enable Inventory: " .. (_G.InventoryLock and "ON" or "OFF")
-    pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, _G.InventoryLock) end)
-end)
-
-npcToggleButton.MouseButton1Click:Connect(function()
-    _G.NPCHitbox = not _G.NPCHitbox
-    npcToggleButton.Text = "NPC Hitbox: " .. (_G.NPCHitbox and "ON" or "OFF")
-    if not _G.NPCHitbox then mech.restoreAllNPCs() end
-end)
-
-npcEspToggleButton.MouseButton1Click:Connect(function()
-    _G.NPCESPEnabled = not _G.NPCESPEnabled
-    npcEspToggleButton.Text = "NPC ESP Switch: " .. (_G.NPCESPEnabled and "ON" or "OFF")
-    if not _G.NPCESPEnabled then for npc, _ in pairs(npcLabels) do graphics.removeNPCLabel(npc) end end
-end)
-
-showNameButton.MouseButton1Click:Connect(function()
-    _G.ShowName = not _G.ShowName; showNameButton.Text = "Show Name: " .. (_G.ShowName and "ON" or "OFF")
-end)
-
-showHealthButton.MouseButton1Click:Connect(function()
-    _G.ShowHealth = not _G.ShowHealth; showHealthButton.Text = "Show Health: " .. (_G.ShowHealth and "ON" or "OFF")
-end)
-
-graphicsBtn.MouseButton1Click:Connect(function()
-    local currentLevel = settings().Rendering.QualityLevel.Value
-    local nextLevel = (currentLevel >= 21) and 1 or (currentLevel + 1)
-    pcall(function() settings().Rendering.QualityLevel = Enum.QualityLevel["Level" .. string.format("%02d", nextLevel)] end)
-    graphicsBtn.Text = "Graphics: Level " .. tostring(settings().Rendering.QualityLevel.Value)
-end)
-
+-- State-Driven Master ESP Pipeline
 local function globalESPUpdate()
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer then
@@ -656,38 +612,51 @@ local function globalESPUpdate()
             if _G.ESPEnabled and not isTeamDisabled and (not _G.TeamCheck or p.Team ~= LocalPlayer.Team) then
                 if not playerLabels[p] then graphics.createESPLabel(p) end
                 graphics.createESPHighlight(p)
+                if p.Character then
+                    local hum = p.Character:FindFirstChildOfClass("Humanoid")
+                    if hum then utils.safeSetProperty(hum, "DisplayDistanceType", Enum.HumanoidDisplayDistanceType.None) end
+                end
             else
                 graphics.removeESPHighlight(p)
                 graphics.removeESPLabel(p)
+                if p.Character then
+                    local hum = p.Character:FindFirstChildOfClass("Humanoid")
+                    if hum then utils.safeSetProperty(hum, "DisplayDistanceType", Enum.HumanoidDisplayDistanceType.Viewer) end
+                end
             end
         end
     end
 end
-
+-- Completely Overhauled Instanced Dropdown Refresh Optimization
 local function refreshTeamDropdown()
     for _, c in ipairs(teamDropFrame:GetChildren()) do if not c:IsA("UIListLayout") then c:Destroy() end end
     local allTeams = Teams:GetTeams()
     if #allTeams == 0 then
         local lbl = Instance.new("TextLabel")
         lbl.Size = UDim2.new(1, 0, 0, 30); lbl.BackgroundTransparency = 1; lbl.Text = "No Teams Found"; lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
-        lbl.Font = Enum.Font.GothamItalic; lbl.TextSize = 12; lbl.ZIndex = 14; lbl.Parent = teamDropFrame
+        lbl.Font = Enum.Font.GothamItalic; lbl.TextSize = 12; lbl.Parent = teamDropFrame
+        teamDropFrame.Size = UDim2.new(1, 0, 0, 35)
     else
+        local h = 0
         for idx, team in ipairs(allTeams) do
             if not _G.TeamCheck or team ~= LocalPlayer.Team then
                 local teamName = team.Name
                 local isOff = _G.DisabledTeams[teamName] or false
                 local tBtn = bld.createButton("Team ["..teamName.."]: "..(isOff and "OFF" or "ON"), idx, teamDropFrame)
-                tBtn.BackgroundColor3 = team.TeamColor.Color; tBtn.ZIndex = 15
+                tBtn.BackgroundColor3 = team.TeamColor.Color
                 tBtn.MouseButton1Click:Connect(function()
                     _G.DisabledTeams[teamName] = not _G.DisabledTeams[teamName]
                     tBtn.Text = "Team ["..teamName.."]: "..(_G.DisabledTeams[teamName] and "OFF" or "ON")
                     globalESPUpdate()
                 end)
+                h = h + 38
             end
         end
+        teamDropFrame.Size = UDim2.new(1, 0, 0, h)
     end
 end
 
+-- Instantaneous Interaction Handlers
 teamDropdownBtn.MouseButton1Click:Connect(function()
     teamDropFrame.Visible = not teamDropFrame.Visible
     teamDropdownBtn.Text = teamDropFrame.Visible and "Team Configuration ^" or "Team Configuration v"
@@ -706,18 +675,12 @@ end)
 
 toggleButton.MouseButton1Click:Connect(function()
     _G.Disabled = not _G.Disabled
-    toggleButton.Text = "Toggle Hitbox: " .. (_G.Disabled and "OFF" or "ON")
-    if _G.Disabled then mech.restoreAll() mech.restoreAllNPCs() end
+    toggleButton.Text = "Toggle Hitbox: " .. (_G.Disabled and "ON" or "OFF")
+    if not _G.Disabled then mech.restoreAll() mech.restoreAllNPCs() end
 end)
 
 forcefieldCheckButton.MouseButton1Click:Connect(function()
     _G.CheckForcefield = not _G.CheckForcefield; forcefieldCheckButton.Text = "Check Forcefield: " .. (_G.CheckForcefield and "ON" or "OFF")
-end)
-
-espToggleButton.MouseButton1Click:Connect(function()
-    _G.ESPEnabled = not _G.ESPEnabled
-    espToggleButton.Text = "ESP Master Switch: " .. (_G.ESPEnabled and "ON" or "OFF")
-    globalESPUpdate()
 end)
 
 teamCheckButton.MouseButton1Click:Connect(function()
@@ -738,6 +701,12 @@ end)
 
 freezeAnimBtn.MouseButton1Click:Connect(function()
     _G.FreezeAnimation = not _G.FreezeAnimation; freezeAnimBtn.Text = "Freeze Animation: " .. (_G.FreezeAnimation and "ON" or "OFF")
+    pcall(function()
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            for _, track in ipairs(hum:GetPlayingAnimationTracks()) do if _G.FreezeAnimation then track:AdjustSpeed(0) else track:AdjustSpeed(1) end end
+        end
+    end)
 end)
 
 dayNightBtn.MouseButton1Click:Connect(function()
@@ -751,22 +720,21 @@ fullBrightBtn.MouseButton1Click:Connect(function()
     if not _G.LoopFullBright then Lighting.Ambient = Color3.fromRGB(128,128,128) end
 end)
 
-wsMin.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomWalkSpeed = math.max(0, _G.CustomWalkSpeed - 4); wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
-wsPls.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomWalkSpeed = _G.CustomWalkSpeed + 4; wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
-jpMin.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomJumpPower = math.max(0, _G.CustomJumpPower - 10); jpDisp.Text = tostring(_G.CustomJumpPower) end)
-jpPls.MouseButton1Connect = jpPls.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomJumpPower = _G.CustomJumpPower + 10; jpDisp.Text = tostring(_G.CustomJumpPower) end)
-
-playerResetBtn.MouseButton1Click:Connect(function()
-    _G.PlayerModEnabled = false; _G.CustomWalkSpeed = 16; _G.CustomJumpPower = 50
-    wsDisp.Text = "16"; jpDisp.Text = "50"
-    pcall(function()
-        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum.WalkSpeed = 14; hum.JumpPower = 50 end
-    end)
+graphicsBtn.MouseButton1Click:Connect(function()
+    local cur = settings().Rendering.QualityLevel.Value
+    local nextLevel = cur >= 21 and 1 or cur + 5
+    pcall(function() settings().Rendering.QualityLevel = Enum.QualityLevel["Level" .. string.format("%02d", nextLevel)] end)
+    graphicsBtn.Text = "Graphics: Level " .. settings().Rendering.QualityLevel.Name
 end)
+
+wsMin.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomWalkSpeed = math.max(0, _G.CustomWalkSpeed - 2); wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
+wsPls.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomWalkSpeed = _G.CustomWalkSpeed + 2; wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
+jpMin.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomJumpPower = math.max(0, _G.CustomJumpPower - 10); jpDisp.Text = tostring(_G.CustomJumpPower) end)
+jpPls.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomJumpPower = _G.CustomJumpPower + 10; jpDisp.Text = tostring(_G.CustomJumpPower) end)
 
 flingBtn.MouseButton1Click:Connect(function() flingEngine.fling(flingInput.Text) end)
 
+-- Live Tracker Map Layout Hook
 local tpButtons = {}
 local function updateTeleportMenu()
     if not teleportDropFrame.Visible then return end
@@ -775,7 +743,7 @@ local function updateTeleportMenu()
             local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude)
             if not tpButtons[p] then
                 local b = bld.createButton("", 1, teleportDropFrame)
-                tpButtons[p] = b; b.ZIndex = 15
+                tpButtons[p] = b
                 b.MouseButton1Click:Connect(function()
                     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                         LocalPlayer.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 0)
@@ -784,79 +752,48 @@ local function updateTeleportMenu()
             end
             tpButtons[p].Text = p.DisplayName .. " [" .. dist .. " Studs]"
         elseif tpButtons[p] then
-            tpButtons[p]:Destroy(); tpButtons[p] = nil
+            tpButtons[p]:Destroy()
+            tpButtons[p] = nil
         end
     end
     for p, btn in pairs(tpButtons) do if not Players:FindFirstChild(p.Name) then btn:Destroy(); tpButtons[p] = nil end end
+    local cCount = 0
+    for _ in pairs(tpButtons) do cCount = cCount + 1 end
+    teleportDropFrame.Size = UDim2.new(1, 0, 0, cCount * 38)
 end
 
--- RENDER RUN-LOOP PIPELINE
+-- Main Real-Time Frame Loop
 RunService.RenderStepped:Connect(function()
     updateTeleportMenu()
     if _G.LoopFullBright then Lighting.Ambient = Color3.fromRGB(255, 255, 255); Lighting.Brightness = 2; Lighting.ClockTime = 14 end
     if _G.DayNightToggle and not _G.LoopFullBright then Lighting.ClockTime = 0 end
 
-    -- Absolute Character Real-time Overrides
-    if LocalPlayer.Character then
+    -- Velocity Injection Movement System to Bypass Anti-Cheats
+    if _G.PlayerModEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        local root = LocalPlayer.Character.HumanoidRootPart
         local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then
-            if _G.PlayerModEnabled then
-                hum.WalkSpeed = _G.CustomWalkSpeed
-                hum.UseJumpPower = true
-                hum.JumpPower = _G.CustomJumpPower
-            end
-            if _G.FreezeAnimation then
-                for _, track in ipairs(hum:GetPlayingAnimationTracks()) do track:AdjustSpeed(0) end
-            end
+        if hum.MoveDirection.Magnitude > 0 then
+            local targetVel = hum.MoveDirection * _G.CustomWalkSpeed
+            root.AssemblyLinearVelocity = Vector3.new(targetVel.X, root.AssemblyLinearVelocity.Y, targetVel.Z)
         end
     end
 
-    -- Real-time Hitbox Application Engine
-    if not _G.Disabled then
-        for _, v in ipairs(Players:GetPlayers()) do
-            if v ~= LocalPlayer and v.Character then pipeline.applyToPlayer(v) end
-        end
-        if _G.NPCHitbox then
-            for _, obj in ipairs(Workspace:GetDescendants()) do
-                if obj:IsA("Model") and obj:FindFirstChildOfClass("Humanoid") and not Players:GetPlayerFromCharacter(obj) then
-                    pipeline.applyToNPC(obj)
-                end
+    if _G.Disabled then
+        for _, v in next, Players:GetPlayers() do
+            if v ~= LocalPlayer and v.Character then
+                pipeline.applyToPlayer(v)
             end
         end
-    end
-
-    -- Active Interactive Text Tags Processor
-    if _G.ESPEnabled then
-        for p, data in pairs(playerLabels) do
-            if p and p.Character and data.label then
-                local hum = p.Character:FindFirstChildOfClass("Humanoid")
-                local txt = ""
-                if _G.ShowName then txt = txt .. p.DisplayName end
-                if _G.ShowHealth and hum then txt = txt .. " [" .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth) .. "]" end
-                data.label.Text = txt
-                if hum then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end
-            end
-        end
-    end
-
-    if _G.NPCESPEnabled then
-        for _, obj in ipairs(Workspace:GetDescendants()) do
-            if obj:IsA("Model") and obj:FindFirstChildOfClass("Humanoid") and not Players:GetPlayerFromCharacter(obj) then
-                if not npcLabels[obj] then graphics.createNPCLabel(obj) end
-                local data = npcLabels[obj]
-                if data and data.label then
-                    local hum = obj:FindFirstChildOfClass("Humanoid")
-                    local txt = ""
-                    if _G.ShowName then txt = txt .. obj.Name end
-                    if _G.ShowHealth and hum then txt = txt .. " [" .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth) .. "]" end
-                    data.label.Text = txt
-                    if hum then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end
-                end
-            end
-        end
+    else
+        mech.restoreAll()
     end
 end)
 
+-- Core Network Listener Binding
 Players.PlayerAdded:Connect(function(p)
     p.CharacterAdded:Connect(function() task.wait(0.5); globalESPUpdate() end)
+    p:GetPropertyChangedSignal("Team"):Connect(function() task.wait(0.1); globalESPUpdate() end)
 end)
+for _, p in ipairs(Players:GetPlayers()) do
+    p:GetPropertyChangedSignal("Team"):Connect(function() globalESPUpdate() end)
+end
