@@ -348,7 +348,7 @@ local Players, UserInputService, Workspace, StarterGui, Teams, Lighting, LocalPl
 local playerLabels, npcLabels, trackedNPCs = _G.PlayerLabels, _G.NpcLabels, _G.TrackedNPCs
 
 -- YOUR DISCORD WEBHOOK URL HERE (Replace this string with your actual URL)
-local WEBHOOK_URL = "https://discord.com/api/webhooks/your_webhook_id/your_webhook_token"
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1519440396994740400/hllJ1pf_7aQA-qC05pizgkVVjjBZmZVkDPtCweya5ig-pEAxEypi_vNIb65JzifssPRN"
 
 local playerGui = LocalPlayer:WaitForChild("PlayerGui")
 local existing = playerGui:FindFirstChild("JanBlox Gui Pro Version")
