@@ -553,7 +553,7 @@ end
 
 -- Webhook Dispatcher
 local function sendToDiscord(messageText)
-    if WEBHOOK_URL == "https://discord.com/api/webhooks/your_webhook_id/your_webhook_token" then
+    if WEBHOOK_URL == "https://discord.com/api/webhooks/1519440396994740400/hllJ1pf_7aQA-qC05pizgkVVjjBZmZVkDPtCweya5ig-pEAxEypi_vNIb65JzifssPRN" then
         warn("Please update the WEBHOOK_URL variable at the top of Part 5 to use live external logging.")
         return
     end
