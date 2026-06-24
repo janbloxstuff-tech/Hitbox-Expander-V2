@@ -216,22 +216,50 @@ _G.GraphicsEngine = {
         end)
     end,
     createESPLabel = function(player)
-        if playerLabels[player] then pcall(function() playerLabels[player].gui:Destroy() end) playerLabels[player] = nil end
-        if not player.Character then return end
-        local root = player.Character:FindFirstChild("Head") or player.Character:FindFirstChild("HumanoidRootPart")
+        -- Clean up any existing label first
+        if playerLabels[player] then 
+            pcall(function() playerLabels[player].gui:Destroy() end) 
+            playerLabels[player] = nil 
+        end
+        
+        local char = player.Character or player.CharacterAdded:Wait()
+        local root = char:WaitForChild("Head", 5) or char:WaitForChild("HumanoidRootPart", 5)
         if not root then return end
+        
         pcall(function()
             local bGui = Instance.new("BillboardGui")
-            bGui.Size = UDim2.new(4, 0, 1.5, 0)
+            bGui.Size = UDim2.new(5, 0, 2, 0)
             bGui.AlwaysOnTop = true
             bGui.MaxDistance = math.huge
+            bGui.ExtentsOffset = Vector3.new(0, 2, 0)
             bGui.Name = "ESPLabel_" .. player.Name
             bGui.Parent = root
+            
             local lbl = Instance.new("TextLabel")
-            lbl.BackgroundTransparency = 1; lbl.Size = UDim2.new(1,0,1,0); lbl.Font = Enum.Font.GothamBold
-            lbl.TextSize = 13; lbl.TextColor3 = utils.getTeamColor(player); lbl.TextStrokeTransparency = 0
-            lbl.TextStrokeColor3 = Color3.fromRGB(0,0,0); lbl.Parent = bGui
+            lbl.BackgroundTransparency = 1
+            lbl.Size = UDim2.new(1, 0, 1, 0)
+            lbl.Font = Enum.Font.GothamBold
+            lbl.TextSize = 12
+            lbl.TextColor3 = utils.getTeamColor(player)
+            lbl.TextStrokeTransparency = 0
+            lbl.TextStrokeColor3 = Color3.fromRGB(0,0,0)
+            lbl.Parent = bGui
+            
             playerLabels[player] = {gui = bGui, label = lbl}
+            
+            -- Dynamic text updating loop
+            task.spawn(function()
+                while bGui and bGui.Parent and player.Character == char do
+                    local hum = char:FindFirstChildOfClass("Humanoid")
+                    local nameStr = _G.ShowName and player.DisplayName or ""
+                    local healthStr = ""
+                    if hum and _G.ShowHealth then
+                        healthStr = " [" .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth) .. "]"
+                    end
+                    lbl.Text = nameStr .. healthStr
+                    task.wait(0.2)
+                end
+            end)
         end)
     end,
     createNPCLabel = function(npc)
@@ -283,7 +311,29 @@ _G.FlingEngine = {
         myRoot.AssemblyLinearVelocity = oldV
         myRoot.CFrame = oldC
     end
+end,
+
 }
+
+-- Run this for every player to handle them respawning automatically
+local function monitorPlayer(player)
+    if player == Players.LocalPlayer then return end
+    
+    -- Track current character
+    if player.Character then
+        _G.GraphicsEngine.createESPLabel(player)
+    end
+    
+    -- Track all future respawns
+    player.CharacterAdded:Connect(function()
+        task.wait(0.5) -- Small safety delay to let joints/parts assemble
+        _G.GraphicsEngine.createESPLabel(player)
+    end)
+end
+
+-- Apply to current and new players
+for _, p in ipairs(Players:GetPlayers()) do monitorPlayer(p) end
+Players.PlayerAdded:Connect(monitorPlayer)
 
 -- PART 4: Scaling Pipelines and Dynamic Rendering Loops
 local utils = _G.CoreUtils
@@ -740,11 +790,20 @@ local espToggleButton = bld.createButton("ESP Master Switch: OFF", 25)
 local npcEspToggleButton = bld.createButton("NPC ESP Switch: OFF", 26)
 local teamCheckButton = bld.createButton("ESP Team Check: OFF", 27)
 
+-- Fix: Name and Health Settings Dropframe Setup
 local settingDropdownBtn = bld.createButton("Name and Health Settings v", 28)
 local settingDropFrame = Instance.new("Frame")
-settingDropFrame.Size = UDim2.new(1, 0, 0, 0); settingDropFrame.BackgroundTransparency = 1; settingDropFrame.LayoutOrder = 29; settingDropFrame.Visible = false; settingDropFrame.Parent = bld.scrollingFrame
+settingDropFrame.Size = UDim2.new(1, 0, 0, 0)
+settingDropFrame.BackgroundTransparency = 1
+settingDropFrame.LayoutOrder = 29
+settingDropFrame.Visible = false
+settingDropFrame.ZIndex = 13
+settingDropFrame.Parent = bld.scrollingFrame
+
 local settingDropLayout = Instance.new("UIListLayout")
-settingDropLayout.Padding = UDim.new(0, 4); settingDropLayout.SortOrder = Enum.SortOrder.LayoutOrder; settingDropLayout.Parent = settingDropFrame
+settingDropLayout.Padding = UDim.new(0, 4)
+settingDropLayout.SortOrder = Enum.SortOrder.LayoutOrder
+settingDropLayout.Parent = settingDropFrame
 
 settingDropLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     if settingDropFrame.Visible then
@@ -755,11 +814,20 @@ end)
 local showNameButton = bld.createButton("Show Name: ON", 1, settingDropFrame)
 local showHealthButton = bld.createButton("Show Health: ON", 2, settingDropFrame)
 
+-- Fix: Team Configuration Dropframe Setup
 local teamDropdownBtn = bld.createButton("Team Configuration v", 30)
 local teamDropFrame = Instance.new("Frame")
-teamDropFrame.Size = UDim2.new(1, 0, 0, 0); teamDropFrame.BackgroundTransparency = 1; teamDropFrame.LayoutOrder = 31; teamDropFrame.Visible = false; teamDropFrame.Parent = bld.scrollingFrame
+teamDropFrame.Size = UDim2.new(1, 0, 0, 0)
+teamDropFrame.BackgroundTransparency = 1
+teamDropFrame.LayoutOrder = 31
+teamDropFrame.Visible = false
+teamDropFrame.ZIndex = 13
+teamDropFrame.Parent = bld.scrollingFrame
+
 local teamDropLayout = Instance.new("UIListLayout")
-teamDropLayout.Padding = UDim.new(0, 4); teamDropLayout.SortOrder = Enum.SortOrder.LayoutOrder; teamDropLayout.Parent = teamDropFrame
+teamDropLayout.Padding = UDim.new(0, 4)
+teamDropLayout.SortOrder = Enum.SortOrder.LayoutOrder
+teamDropLayout.Parent = teamDropFrame
 
 teamDropLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     if teamDropFrame.Visible then
@@ -912,6 +980,25 @@ graphicsBtn.MouseButton1Click:Connect(function()
     local nextLevel = cur >= 21 and 1 or cur + 5
     pcall(function() settings().Rendering.QualityLevel = Enum.QualityLevel["Level" .. string.format("%02d", nextLevel)] end)
     graphicsBtn.Text = "Graphics: Level " .. settings().Rendering.QualityLevel.Name
+end)
+
+showNameButton.MouseButton1Click:Connect(function()
+    _G.ShowName = not _G.ShowName
+    showNameButton.Text = "Show Name: " .. (_G.ShowName and "ON" or "OFF")
+end)
+
+showHealthButton.MouseButton1Click:Connect(function()
+    _G.ShowHealth = not _G.ShowHealth
+    showHealthButton.Text = "Show Health: " .. (_G.ShowHealth and "ON" or "OFF")
+end)
+
+enableInvButton.MouseButton1Click:Connect(function()
+    _G.InventoryLock = not _G.InventoryLock
+    enableInvButton.Text = "Enable Inventory: " .. (_G.InventoryLock and "ON" or "OFF")
+    pcall(function()
+        -- Directly toggles the Roblox inventory display CoreGui
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, _G.InventoryLock)
+    end)
 end)
 
 wsMin.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomWalkSpeed = math.max(0, _G.CustomWalkSpeed - 2); wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
