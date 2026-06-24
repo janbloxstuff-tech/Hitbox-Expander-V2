@@ -32,14 +32,6 @@ end
 local function applyToPlayer(player)
     if not player or not player.Character then return end
     if player == LocalPlayer then return end -- keep same exclusion as original
-    
-    -- Check if player is alive
-    local humanoid = player.Character:FindFirstChild("Humanoid")
-    if not humanoid or humanoid.Health <= 0 then
-        restorePlayer(player)
-        return
-    end
-    
     pcall(function()
         local part = player.Character:FindFirstChild(_G.TargetPart)
         if not part or not part:IsA("BasePart") then
@@ -117,11 +109,19 @@ for _, player in ipairs(Players:GetPlayers()) do
 end
 
 -- RenderStepped loop preserving original behavior: when _G.Disabled is true we apply the hitbox
+-- Also check if players are dead and remove hitbox
 RunService.RenderStepped:Connect(function()
     if _G.Disabled then
         for _, v in next, Players:GetPlayers() do
-            if v ~= LocalPlayer then
-                applyToPlayer(v)
+            if v ~= LocalPlayer and v.Character then
+                local humanoid = v.Character:FindFirstChild("Humanoid")
+                -- If player is dead (Health <= 0), restore their parts
+                if humanoid and humanoid.Health <= 0 then
+                    restorePlayer(v)
+                else
+                    -- If player is alive, apply hitbox
+                    applyToPlayer(v)
+                end
             end
         end
     end
@@ -198,7 +198,7 @@ sizeButtonContainer.Parent = frame
 local minusButton = Instance.new("TextButton")
 minusButton.Name = "MinusButton"
 minusButton.Size = UDim2.new(0, 50, 1, 0)
-minusButton.Position = UDim2.new(0, 35, 0, 0)
+minusButton.Position = UDim2.new(0, 10, 0, 0)
 minusButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
 minusButton.TextColor3 = Color3.new(1,1,1)
 minusButton.Font = Enum.Font.GothamBold
@@ -208,7 +208,7 @@ minusButton.Parent = sizeButtonContainer
 
 local sizeDisplay = Instance.new("TextLabel")
 sizeDisplay.Size = UDim2.new(0, 70, 1, 0)
-sizeDisplay.Position = UDim2.new(0, 90, 0, 0)
+sizeDisplay.Position = UDim2.new(0, 65, 0, 0)
 sizeDisplay.BackgroundColor3 = Color3.fromRGB(40,40,40)
 sizeDisplay.TextColor3 = Color3.new(1,1,1)
 sizeDisplay.Font = Enum.Font.GothamBold
@@ -219,7 +219,7 @@ sizeDisplay.Parent = sizeButtonContainer
 local plusButton = Instance.new("TextButton")
 plusButton.Name = "PlusButton"
 plusButton.Size = UDim2.new(0, 50, 1, 0)
-plusButton.Position = UDim2.new(0, 165, 0, 0)
+plusButton.Position = UDim2.new(0, 140, 0, 0)
 plusButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
 plusButton.TextColor3 = Color3.new(1,1,1)
 plusButton.Font = Enum.Font.GothamBold
