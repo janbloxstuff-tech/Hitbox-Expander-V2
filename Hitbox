@@ -1,4 +1,4 @@
--- JanBlox Gui Pro Version (LocalScript)
+-- JanBlox Gui Pro Version (LocalScript) - PART 1
 -- Place this script in StarterGui (or PlayerScripts) so it runs for the LocalPlayer
 
 -- Original settings from your script
@@ -6,15 +6,26 @@ _G.HeadSize = 5
 _G.Disabled = true -- note: your original script applies the hitbox when this is true
 _G.TargetPart = "HumanoidRootPart" -- can be "HumanoidRootPart" or "Head"
 _G.NPCHitbox = false -- NPC hitbox toggle
+_G.ESPEnabled = false -- Highlight ESP toggle
+_G.ESPEnabled2D = false -- 2D Box ESP toggle
+_G.ShowTeamESP = false -- Show team ESP
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
+local Camera = Workspace.CurrentCamera
 
 -- Store original properties so we can restore them later
 local originalProps = {} -- originalProps[player] = { [partName] = {Size, Transparency, BrickColor, Material, CanCollide} }
 local npcHitboxes = {} -- Track which NPCs have hitboxes applied
+local espHighlights = {} -- Track ESP highlights
+local esp2DBoxes = {} -- Track 2D ESP boxes
+local playerLabels = {} -- Track player labels
+local trackedNPCs = {} -- Track NPCs we've already processed
+
+local npcScanCooldown = 0
+local NPC_SCAN_INTERVAL = 1 -- Scan NPCs every 1 second
 
 local function storeOriginal(player, partName)
     if not player or not player.Character then return end
@@ -48,13 +59,20 @@ local function storeNPCOriginal(npc, partName)
     end
 end
 
+local function shouldApplyHitbox(player)
+    if not _G.TeamCheck then return true end
+    if not LocalPlayer or not LocalPlayer.Character then return false end
+    return player.Team ~= LocalPlayer.Team
+end
+
 local function applyToPlayer(player)
     if not player or not player.Character then return end
-    if player == LocalPlayer then return end -- keep same exclusion as original
+    if player == LocalPlayer then return end
+    if not shouldApplyHitbox(player) then return end
+    
     pcall(function()
         local part = player.Character:FindFirstChild(_G.TargetPart)
         if not part or not part:IsA("BasePart") then
-            -- fallback to HumanoidRootPart if requested target missing
             part = player.Character:FindFirstChild("HumanoidRootPart")
             if not part then return end
         end
@@ -71,7 +89,6 @@ end
 local function applyToNPC(npc)
     if not npc then return end
     pcall(function()
-        -- Try to find HumanoidRootPart or Torso
         local part = npc:FindFirstChild("HumanoidRootPart")
         if not part then
             part = npc:FindFirstChild("Torso")
@@ -98,7 +115,6 @@ local function restorePlayer(player)
     for partName, props in pairs(data) do
         local part = player.Character:FindFirstChild(partName)
         if part and part:IsA("BasePart") and props then
-            -- restore saved properties
             pcall(function()
                 part.Size = props.Size
                 part.Transparency = props.Transparency
@@ -136,7 +152,6 @@ end
 local function restorePlayerFully(player)
     if not player or not player.Character then return end
     
-    -- Restore both HumanoidRootPart and Head
     local hrp = player.Character:FindFirstChild("HumanoidRootPart")
     local head = player.Character:FindFirstChild("Head")
     
@@ -177,77 +192,183 @@ local function restoreAllNPCs()
     for npc, _ in pairs(npcHitboxes) do
         restoreNPC(npc)
     end
+    trackedNPCs = {}
+end
+
+local function createESPHighlight(player)
+    if espHighlights[player] then return end
+    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
+    
+    pcall(function()
+        local highlight = Instance.new("Highlight")
+        highlight.Adornee = player.Character
+        highlight.FillColor = Color3.fromRGB(0, 255, 0)
+        highlight.OutlineColor = Color3.fromRGB(0, 255, 0)
+        highlight.Parent = player.Character
+        espHighlights[player] = highlight
+    end)
+end
+
+local function removeESPHighlight(player)
+    if espHighlights[player] then
+        pcall(function()
+            espHighlights[player]:Destroy()
+        end)
+        espHighlights[player] = nil
+    end
+end
+
+local function createESPLabel(player)
+    if playerLabels[player] then return end
+    if not player.Character then return end
+    
+    pcall(function()
+        local billboardGui = Instance.new("BillboardGui")
+        billboardGui.Size = UDim2.new(4, 0, 2, 0)
+        billboardGui.MaxDistance = math.huge
+        billboardGui.Parent = player.Character:FindFirstChild("Head") or player.Character:FindFirstChild("HumanoidRootPart")
+        
+        local textLabel = Instance.new("TextLabel")
+        textLabel.BackgroundTransparency = 1
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.Font = Enum.Font.GothamBold
+        textLabel.TextSize = 14
+        textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        textLabel.Parent = billboardGui
+        
+        playerLabels[player] = {gui = billboardGui, label = textLabel}
+    end)
+end
+
+local function removeESPLabel(player)
+    if playerLabels[player] then
+        pcall(function()
+            playerLabels[player].gui:Destroy()
+        end)
+        playerLabels[player] = nil
+    end
+end
+
+local function updateESPLabel(player)
+    if not playerLabels[player] or not player.Character then return end
+    
+    local humanoid = player.Character:FindFirstChild("Humanoid")
+    local nametag = player.Character:FindFirstChild("Head")
+    
+    if humanoid and nametag then
+        local health = humanoid.Health
+        local healthText = health > 0 and math.floor(health) or "DEAD"
+        playerLabels[player].label.Text = player.Name .. "\nHealth: " .. healthText
+        
+        if health <= 0 then
+            playerLabels[player].label.TextColor3 = Color3.fromRGB(255, 0, 0)
+        else
+            playerLabels[player].label.TextColor3 = Color3.fromRGB(0, 255, 0)
+        end
+    end
+end
+
+local function shouldShowESP(player)
+    if not _G.TeamCheck then return _G.ESPEnabled end
+    if player == LocalPlayer then return false end
+    if _G.ShowTeamESP then return true end
+    return player.Team ~= LocalPlayer.Team and _G.ESPEnabled
 end
 
 -- Reapply or restore on CharacterAdded
 Players.PlayerAdded:Connect(function(player)
     if player == LocalPlayer then return end
     player.CharacterAdded:Connect(function()
-        -- Clear old data for this player
         originalProps[player] = nil
-        -- small delay to allow parts to exist
+        removeESPHighlight(player)
+        removeESPLabel(player)
         wait(0.1)
         if _G.Disabled then
             applyToPlayer(player)
         end
+        if shouldShowESP(player) then
+            createESPHighlight(player)
+            createESPLabel(player)
+        end
     end)
 end)
 
--- If the script starts after players are already present, connect their CharacterAdded and maybe apply
 for _, player in ipairs(Players:GetPlayers()) do
     if player ~= LocalPlayer then
         player.CharacterAdded:Connect(function()
-            -- Clear old data for this player
             originalProps[player] = nil
+            removeESPHighlight(player)
+            removeESPLabel(player)
             wait(0.1)
             if _G.Disabled then applyToPlayer(player) end
+            if shouldShowESP(player) then
+                createESPHighlight(player)
+                createESPLabel(player)
+            end
         end)
-        -- if character already exists, apply immediately if enabled
         if player.Character and _G.Disabled then
             applyToPlayer(player)
+        end
+        if shouldShowESP(player) then
+            createESPHighlight(player)
+            createESPLabel(player)
         end
     end
 end
 
--- RenderStepped loop preserving original behavior: when _G.Disabled is true we apply the hitbox
--- Also check if players are dead and remove hitbox
+-- OPTIMIZED RenderStepped loop
 RunService.RenderStepped:Connect(function()
+    -- Update ESP labels (lightweight every frame)
+    for player, labelData in pairs(playerLabels) do
+        if player and player.Character then
+            updateESPLabel(player)
+        end
+    end
+    
     if _G.Disabled then
-        -- Apply to players
+        -- Apply to players (every frame)
         for _, v in next, Players:GetPlayers() do
             if v ~= LocalPlayer and v.Character then
                 local humanoid = v.Character:FindFirstChild("Humanoid")
-                -- If player is dead (Health <= 0), restore their parts FULLY
                 if humanoid and humanoid.Health <= 0 then
                     restorePlayerFully(v)
+                    if espHighlights[v] then
+                        removeESPHighlight(v)
+                    end
                 else
-                    -- If player is alive, apply hitbox
                     applyToPlayer(v)
                 end
             end
         end
 
-        -- Apply to NPCs if NPC hitbox is enabled
-        if _G.NPCHitbox then
-            for _, npc in ipairs(Workspace:GetDescendants()) do
-                if npc:IsA("Model") and npc ~= LocalPlayer.Character then
-                    -- Check if it's an NPC (has Humanoid but not a Player)
-                    local humanoid = npc:FindFirstChild("Humanoid")
-                    if humanoid and not Players:FindFirstChild(npc.Name) then
-                        if humanoid.Health > 0 then
-                            applyToNPC(npc)
-                        else
-                            restoreNPC(npc)
+        -- Scan NPCs ONLY every 1 second (not every frame!)
+        npcScanCooldown = npcScanCooldown + (1/60) -- Add delta time
+        if npcScanCooldown >= NPC_SCAN_INTERVAL and _G.NPCHitbox then
+            npcScanCooldown = 0
+            
+            pcall(function()
+                -- Only scan immediate children of Workspace, not all descendants
+                for _, npc in ipairs(Workspace:GetChildren()) do
+                    if npc:IsA("Model") and npc ~= LocalPlayer.Character and npc.Parent == Workspace then
+                        local humanoid = npc:FindFirstChild("Humanoid")
+                        local isPlayer = Players:FindFirstChild(npc.Name)
+                        
+                        if humanoid and not isPlayer then
+                            if not trackedNPCs[npc] then
+                                trackedNPCs[npc] = true
+                            end
+                            
+                            if humanoid.Health > 0 then
+                                applyToNPC(npc)
+                            else
+                                restoreNPC(npc)
+                            end
                         end
                     end
                 end
-            end
-        else
-            -- If NPC hitbox is off, restore all NPCs
-            restoreAllNPCs()
+            end)
         end
     else
-        -- If main hitbox is off, restore everything
         restoreAll()
         restoreAllNPCs()
     end
@@ -256,7 +377,6 @@ end)
 -- Create the GUI
 local playerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Remove existing GUI with same name to avoid duplicates
 local existing = playerGui:FindFirstChild("JanBlox Gui Pro Version")
 if existing then existing:Destroy() end
 
@@ -266,7 +386,7 @@ screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 220, 0, 250)
+frame.Size = UDim2.new(0, 240, 0, 500)
 frame.Position = UDim2.new(0, 10, 0, 10)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
@@ -282,66 +402,95 @@ title.Font = Enum.Font.GothamBold
 title.TextSize = 14
 title.Parent = frame
 
+-- Scrolling Frame
+local scrollingFrame = Instance.new("ScrollingFrame")
+scrollingFrame.Size = UDim2.new(1, -10, 1, -34)
+scrollingFrame.Position = UDim2.new(0, 5, 0, 30)
+scrollingFrame.BackgroundTransparency = 1
+scrollingFrame.ScrollBarThickness = 8
+scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 900)
+scrollingFrame.Parent = frame
+
+-- ==================== HITBOX CONFIGURATION ====================
+local hitboxConfigLabel = Instance.new("TextLabel")
+hitboxConfigLabel.Size = UDim2.new(1, 0, 0, 20)
+hitboxConfigLabel.Position = UDim2.new(0, 0, 0, 0)
+hitboxConfigLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+hitboxConfigLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
+hitboxConfigLabel.Font = Enum.Font.GothamBold
+hitboxConfigLabel.TextSize = 12
+hitboxConfigLabel.Text = "Hitbox Configuration"
+hitboxConfigLabel.Parent = scrollingFrame
+
 local toggleButton = Instance.new("TextButton")
 toggleButton.Name = "ToggleHitboxButton"
 toggleButton.Size = UDim2.new(1, -10, 0, 34)
-toggleButton.Position = UDim2.new(0, 5, 0, 30)
+toggleButton.Position = UDim2.new(0, 5, 0, 25)
 toggleButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
 toggleButton.TextColor3 = Color3.new(1,1,1)
 toggleButton.Font = Enum.Font.Gotham
-toggleButton.TextSize = 14
+toggleButton.TextSize = 12
 toggleButton.Text = "Toggle Hitbox"
-toggleButton.Parent = frame
+toggleButton.Parent = scrollingFrame
 
--- Hitbox Target Label
+local teamCheckButton = Instance.new("TextButton")
+teamCheckButton.Name = "TeamCheckButton"
+teamCheckButton.Size = UDim2.new(1, -10, 0, 34)
+teamCheckButton.Position = UDim2.new(0, 5, 0, 62)
+teamCheckButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+teamCheckButton.TextColor3 = Color3.new(1,1,1)
+teamCheckButton.Font = Enum.Font.Gotham
+teamCheckButton.TextSize = 12
+teamCheckButton.Text = "Team Check: ON"
+teamCheckButton.Parent = scrollingFrame
+
 local targetLabel = Instance.new("TextLabel")
 targetLabel.Size = UDim2.new(1, -10, 0, 16)
-targetLabel.Position = UDim2.new(0, 5, 0, 66)
+targetLabel.Position = UDim2.new(0, 5, 0, 100)
 targetLabel.BackgroundTransparency = 1
 targetLabel.Text = "Hitbox: " .. _G.TargetPart
 targetLabel.TextColor3 = Color3.new(0.5, 1, 0.5)
 targetLabel.Font = Enum.Font.Gotham
-targetLabel.TextSize = 11
-targetLabel.Parent = frame
+targetLabel.TextSize = 10
+targetLabel.Parent = scrollingFrame
 
 local changeButton = Instance.new("TextButton")
 changeButton.Name = "ChangeHitboxButton"
 changeButton.Size = UDim2.new(1, -10, 0, 34)
-changeButton.Position = UDim2.new(0, 5, 0, 84)
+changeButton.Position = UDim2.new(0, 5, 0, 118)
 changeButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
 changeButton.TextColor3 = Color3.new(1,1,1)
 changeButton.Font = Enum.Font.Gotham
-changeButton.TextSize = 14
+changeButton.TextSize = 12
 changeButton.Text = "Change Hitbox"
-changeButton.Parent = frame
+changeButton.Parent = scrollingFrame
 
 local npcToggleButton = Instance.new("TextButton")
 npcToggleButton.Name = "NPCHitboxButton"
 npcToggleButton.Size = UDim2.new(1, -10, 0, 34)
-npcToggleButton.Position = UDim2.new(0, 5, 0, 120)
+npcToggleButton.Position = UDim2.new(0, 5, 0, 155)
 npcToggleButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
 npcToggleButton.TextColor3 = Color3.new(1,1,1)
 npcToggleButton.Font = Enum.Font.Gotham
-npcToggleButton.TextSize = 14
+npcToggleButton.TextSize = 12
 npcToggleButton.Text = "NPC Hitbox: OFF"
-npcToggleButton.Parent = frame
+npcToggleButton.Parent = scrollingFrame
 
--- Hitbox Limit Control Section
 local sizeLabel = Instance.new("TextLabel")
 sizeLabel.Size = UDim2.new(1, -10, 0, 16)
-sizeLabel.Position = UDim2.new(0, 5, 0, 156)
+sizeLabel.Position = UDim2.new(0, 5, 0, 193)
 sizeLabel.BackgroundTransparency = 1
 sizeLabel.Text = "HitBox Limit (50)"
 sizeLabel.TextColor3 = Color3.new(1,1,1)
 sizeLabel.Font = Enum.Font.Gotham
 sizeLabel.TextSize = 12
-sizeLabel.Parent = frame
+sizeLabel.Parent = scrollingFrame
 
 local sizeButtonContainer = Instance.new("Frame")
 sizeButtonContainer.Size = UDim2.new(1, -10, 0, 30)
-sizeButtonContainer.Position = UDim2.new(0, 5, 0, 174)
+sizeButtonContainer.Position = UDim2.new(0, 5, 0, 211)
 sizeButtonContainer.BackgroundTransparency = 1
-sizeButtonContainer.Parent = frame
+sizeButtonContainer.Parent = scrollingFrame
 
 local minusButton = Instance.new("TextButton")
 minusButton.Name = "MinusButton"
@@ -375,28 +524,75 @@ plusButton.TextSize = 16
 plusButton.Text = "+"
 plusButton.Parent = sizeButtonContainer
 
--- Button behaviors
+-- ==================== ESP CONFIGURATION ====================
+local espConfigLabel = Instance.new("TextLabel")
+espConfigLabel.Size = UDim2.new(1, 0, 0, 20)
+espConfigLabel.Position = UDim2.new(0, 0, 0, 260)
+espConfigLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+espConfigLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+espConfigLabel.Font = Enum.Font.GothamBold
+espConfigLabel.TextSize = 12
+espConfigLabel.Text = "ESP Configuration"
+espConfigLabel.Parent = scrollingFrame
+
+local espToggleButton = Instance.new("TextButton")
+espToggleButton.Name = "ESPToggleButton"
+espToggleButton.Size = UDim2.new(1, -10, 0, 34)
+espToggleButton.Position = UDim2.new(0, 5, 0, 285)
+espToggleButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+espToggleButton.TextColor3 = Color3.new(1,1,1)
+espToggleButton.Font = Enum.Font.Gotham
+espToggleButton.TextSize = 12
+espToggleButton.Text = "Toggle Enemy Team ESP: OFF"
+espToggleButton.Parent = scrollingFrame
+
+local esp2DToggleButton = Instance.new("TextButton")
+esp2DToggleButton.Name = "ESP2DToggleButton"
+esp2DToggleButton.Size = UDim2.new(1, -10, 0, 34)
+esp2DToggleButton.Position = UDim2.new(0, 5, 0, 322)
+esp2DToggleButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+esp2DToggleButton.TextColor3 = Color3.new(1,1,1)
+esp2DToggleButton.Font = Enum.Font.Gotham
+esp2DToggleButton.TextSize = 12
+esp2DToggleButton.Text = "Toggle 2D ESP: OFF"
+esp2DToggleButton.Parent = scrollingFrame
+
+local espTeamToggleButton = Instance.new("TextButton")
+espTeamToggleButton.Name = "ESPTeamToggleButton"
+espTeamToggleButton.Size = UDim2.new(1, -10, 0, 34)
+espTeamToggleButton.Position = UDim2.new(0, 5, 0, 359)
+espTeamToggleButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+espTeamToggleButton.TextColor3 = Color3.new(1,1,1)
+espTeamToggleButton.Font = Enum.Font.Gotham
+espTeamToggleButton.TextSize = 12
+espTeamToggleButton.Text = "Toggle Team ESP: OFF"
+espTeamToggleButton.Parent = scrollingFrame
+
+-- ==================== BUTTON BEHAVIORS ====================
+
 toggleButton.MouseButton1Click:Connect(function()
-    -- Toggle according to your original pattern: when _G.Disabled == true, the hitbox is active.
     _G.Disabled = not _G.Disabled
 
     if not _G.Disabled then
-        -- turning hitbox OFF -> restore everything
         restoreAll()
         restoreAllNPCs()
+        for player, _ in pairs(espHighlights) do
+            removeESPHighlight(player)
+        end
     else
-        -- turning hitbox ON -> apply to all players (will store originals)
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer then
                 applyToPlayer(p)
+                if shouldShowESP(p) then
+                    createESPHighlight(p)
+                end
             end
         end
-        -- Apply to NPCs if enabled
         if _G.NPCHitbox then
-            for _, npc in ipairs(Workspace:GetDescendants()) do
-                if npc:IsA("Model") and npc ~= LocalPlayer.Character then
+            for npc, _ in pairs(trackedNPCs) do
+                if npc and npc.Parent then
                     local humanoid = npc:FindFirstChild("Humanoid")
-                    if humanoid and not Players:FindFirstChild(npc.Name) then
+                    if humanoid and humanoid.Health > 0 then
                         applyToNPC(npc)
                     end
                 end
@@ -405,9 +601,23 @@ toggleButton.MouseButton1Click:Connect(function()
     end
 end)
 
+teamCheckButton.MouseButton1Click:Connect(function()
+    _G.TeamCheck = not _G.TeamCheck
+    teamCheckButton.Text = "Team Check: " .. (_G.TeamCheck and "ON" or "OFF")
+    
+    if _G.TeamCheck then
+        restoreAll()
+        if _G.Disabled then
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= LocalPlayer then
+                    applyToPlayer(p)
+                end
+            end
+        end
+    end
+end)
+
 changeButton.MouseButton1Click:Connect(function()
-    -- Switch between HumanoidRootPart and Head
-    -- before switching, restore previous changes so we don't leave modified parts behind
     restoreAll()
     if _G.TargetPart == "HumanoidRootPart" then
         _G.TargetPart = "Head"
@@ -415,10 +625,8 @@ changeButton.MouseButton1Click:Connect(function()
         _G.TargetPart = "HumanoidRootPart"
     end
     
-    -- Update label
     targetLabel.Text = "Hitbox: " .. _G.TargetPart
     
-    -- If currently enabled, apply to new target immediately
     if _G.Disabled then
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer then
@@ -433,12 +641,11 @@ npcToggleButton.MouseButton1Click:Connect(function()
     
     if _G.NPCHitbox then
         npcToggleButton.Text = "NPC Hitbox: ON"
-        -- Only apply if main hitbox is enabled
         if _G.Disabled then
-            for _, npc in ipairs(Workspace:GetDescendants()) do
-                if npc:IsA("Model") and npc ~= LocalPlayer.Character then
+            for npc, _ in pairs(trackedNPCs) do
+                if npc and npc.Parent then
                     local humanoid = npc:FindFirstChild("Humanoid")
-                    if humanoid and not Players:FindFirstChild(npc.Name) then
+                    if humanoid and humanoid.Health > 0 then
                         applyToNPC(npc)
                     end
                 end
@@ -451,14 +658,12 @@ npcToggleButton.MouseButton1Click:Connect(function()
 end)
 
 minusButton.MouseButton1Click:Connect(function()
-    -- Decrease size by 5, minimum is 5
     if _G.HeadSize > 5 then
         _G.HeadSize = _G.HeadSize - 5
     end
     
     sizeDisplay.Text = tostring(_G.HeadSize)
     
-    -- If hitbox is currently enabled, reapply to all players and NPCs
     if _G.Disabled then
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer then
@@ -466,22 +671,25 @@ minusButton.MouseButton1Click:Connect(function()
             end
         end
         if _G.NPCHitbox then
-            for npc, _ in pairs(npcHitboxes) do
-                applyToNPC(npc)
+            for npc, _ in pairs(trackedNPCs) do
+                if npc and npc.Parent then
+                    local humanoid = npc:FindFirstChild("Humanoid")
+                    if humanoid and humanoid.Health > 0 then
+                        applyToNPC(npc)
+                    end
+                end
             end
         end
     end
 end)
 
 plusButton.MouseButton1Click:Connect(function()
-    -- Increase size by 5, maximum is 50
     if _G.HeadSize < 50 then
         _G.HeadSize = _G.HeadSize + 5
     end
     
     sizeDisplay.Text = tostring(_G.HeadSize)
     
-    -- If hitbox is currently enabled, reapply to all players and NPCs
     if _G.Disabled then
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer then
@@ -489,8 +697,58 @@ plusButton.MouseButton1Click:Connect(function()
             end
         end
         if _G.NPCHitbox then
-            for npc, _ in pairs(npcHitboxes) do
-                applyToNPC(npc)
+            for npc, _ in pairs(trackedNPCs) do
+                if npc and npc.Parent then
+                    local humanoid = npc:FindFirstChild("Humanoid")
+                    if humanoid and humanoid.Health > 0 then
+                        applyToNPC(npc)
+                    end
+                end
+            end
+        end
+    end
+end)
+
+espToggleButton.MouseButton1Click:Connect(function()
+    _G.ESPEnabled = not _G.ESPEnabled
+    espToggleButton.Text = "Toggle Enemy Team ESP: " .. (_G.ESPEnabled and "ON" or "OFF")
+    
+    if _G.ESPEnabled then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and shouldShowESP(p) then
+                createESPHighlight(p)
+                createESPLabel(p)
+            end
+        end
+    else
+        for player, _ in pairs(espHighlights) do
+            removeESPHighlight(player)
+            removeESPLabel(player)
+        end
+    end
+end)
+
+esp2DToggleButton.MouseButton1Click:Connect(function()
+    _G.ESPEnabled2D = not _G.ESPEnabled2D
+    esp2DToggleButton.Text = "Toggle 2D ESP: " .. (_G.ESPEnabled2D and "ON" or "OFF")
+end)
+
+espTeamToggleButton.MouseButton1Click:Connect(function()
+    _G.ShowTeamESP = not _G.ShowTeamESP
+    espTeamToggleButton.Text = "Toggle Team ESP: " .. (_G.ShowTeamESP and "ON" or "OFF")
+    
+    if _G.ShowTeamESP and _G.ESPEnabled then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then
+                createESPHighlight(p)
+                createESPLabel(p)
+            end
+        end
+    elseif not _G.ShowTeamESP and _G.ESPEnabled then
+        for player, _ in pairs(espHighlights) do
+            if player and player.Team == LocalPlayer.Team then
+                removeESPHighlight(player)
+                removeESPLabel(player)
             end
         end
     end
