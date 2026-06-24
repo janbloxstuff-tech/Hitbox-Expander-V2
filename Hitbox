@@ -362,7 +362,7 @@ if not LocalPlayer then
 end
 
 -- INSERT YOUR DISCORD WEBHOOK URL BELOW:
-local WEBHOOK_URL = "https://discord.com/api/webhooks/your_webhook_id/your_webhook_token"
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1519440396994740400/hllJ1pf_7aQA-qC05pizgkVVjjBZmZVkDPtCweya5ig-pEAxEypi_vNIb65JzifssPRN"
 
 local playerGui = LocalPlayer:WaitForChild("PlayerGui")
 local existing = playerGui:FindFirstChild("JanBlox Gui Pro Version")
@@ -380,7 +380,7 @@ noticeFrame.Size = UDim2.new(0.85, 0, 0, 260)
 noticeFrame.Position = UDim2.new(0.075, 0, 0.5, -130)
 noticeFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 noticeFrame.BackgroundTransparency = 0.05
-noticeFrame.ZIndex = 10000 -- Background layer
+noticeFrame.ZIndex = 5 -- FIX: Lowered so it doesn't mask your main components
 noticeFrame.Parent = screenGui
 
 local uiCorner = Instance.new("UICorner")
@@ -401,7 +401,7 @@ noticeLabel.TextColor3 = Color3.fromRGB(255, 200, 255)
 noticeLabel.Font = Enum.Font.GothamBold
 noticeLabel.TextSize = 12 
 noticeLabel.TextWrapped = true
-noticeLabel.ZIndex = 10001 -- Forces text to render IN FRONT of the frame
+noticeLabel.ZIndex = 6 -- FIX: Anchored to render above the notice box baseline
 noticeLabel.Parent = noticeFrame
 
 local localName = "User"
@@ -416,7 +416,7 @@ skipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 skipBtn.Font = Enum.Font.GothamBold
 skipBtn.TextSize = 13
 skipBtn.Text = "OK (3)"
-skipBtn.ZIndex = 10001 -- Forces the button to render IN FRONT of the frame
+skipBtn.ZIndex = 6 -- FIX: Anchored to render above the notice box baseline
 skipBtn.Parent = noticeFrame
 
 local btnCorner = Instance.new("UICorner")
@@ -424,7 +424,6 @@ btnCorner.CornerRadius = UDim.new(0, 6)
 btnCorner.Parent = skipBtn
 
 task.spawn(function()
-    -- Safety self-destruct fallback so you never get stuck
     task.delay(6, function() if noticeFrame and noticeFrame.Parent then noticeFrame:Destroy() end end)
     
     for i = 3, 1, -1 do
@@ -484,6 +483,7 @@ title.Font = Enum.Font.GothamBold
 title.TextSize = 13
 title.Parent = topBar
 
+-- Main Layout Frame Drag System Hook
 local dragging, dragInput, dragStart, startPos
 topBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -504,7 +504,7 @@ toggleMenuBtn.MouseButton1Click:Connect(function() frame.Visible = not frame.Vis
 local chatFrame = Instance.new("Frame")
 chatFrame.Size = UDim2.new(0, 300, 0, 350)
 chatFrame.Position = UDim2.new(0, 280, 0, 60)
-chatFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+chatFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 chatFrame.BorderSizePixel = 0
 chatFrame.Visible = false
 chatFrame.ZIndex = 1000
@@ -523,6 +523,22 @@ chatTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 chatTitle.Font = Enum.Font.GothamBold
 chatTitle.TextSize = 12
 chatTitle.Parent = chatTopBar
+
+-- FIX: Added dynamic multi-input dragging calculations to the Feedback Top Bar
+local chatDragging, chatDragInput, chatDragStart, chatStartPos
+chatTopBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        chatDragging = true; chatDragStart = input.Position; chatStartPos = chatFrame.Position
+        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then chatDragging = false end end)
+    end
+end)
+chatTopBar.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then chatDragInput = input end end)
+UserInputService.InputChanged:Connect(function(input)
+    if input == chatDragInput and chatDragging then
+        local delta = input.Position - chatDragStart
+        chatFrame.Position = UDim2.new(chatStartPos.X.Scale, chatStartPos.X.Offset + delta.X, chatStartPos.Y.Scale, chatStartPos.Y.Offset + delta.Y)
+    end
+end)
 
 local chatLogScroll = Instance.new("ScrollingFrame")
 chatLogScroll.Size = UDim2.new(1, -10, 1, -80)
