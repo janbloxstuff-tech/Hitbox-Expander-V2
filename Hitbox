@@ -3,6 +3,7 @@ local LocalPlayer = Players.LocalPlayer
 
 local PART_SIZE = Vector3.new(20, 20, 20)
 local Enabled = true
+local UseCustomParts = false
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "JanBlox Gui"
@@ -10,8 +11,8 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 220, 0, 100)
-MainFrame.Position = UDim2.new(0.5, -110, 0.5, -50)
+MainFrame.Size = UDim2.new(0, 220, 0, 150)
+MainFrame.Position = UDim2.new(0.5, -110, 0.5, -75)
 MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 MainFrame.Parent = ScreenGui
 
@@ -25,10 +26,47 @@ Title.Parent = MainFrame
 
 local ToggleButton = Instance.new("TextButton")
 ToggleButton.Size = UDim2.new(0.9, 0, 0, 40)
-ToggleButton.Position = UDim2.new(0.05, 0, 0.45, 0)
+ToggleButton.Position = UDim2.new(0.05, 0, 0.35, 0)
 ToggleButton.Text = "Turn On Body Parts"
 ToggleButton.TextScaled = true
 ToggleButton.Parent = MainFrame
+
+local SwitchButton = Instance.new("TextButton")
+SwitchButton.Size = UDim2.new(0.9, 0, 0, 40)
+SwitchButton.Position = UDim2.new(0.05, 0, 0.65, 0)
+SwitchButton.Text = "Switch to Custom Parts"
+SwitchButton.TextScaled = true
+SwitchButton.Parent = MainFrame
+
+local function CreateCustomParts(Character)
+	local Root = Character:WaitForChild("HumanoidRootPart", 10)
+	
+	-- Create custom Head part
+	local CustomHead = Instance.new("Part")
+	CustomHead.Name = "Head"
+	CustomHead.Shape = Enum.PartType.Ball
+	CustomHead.Size = PART_SIZE
+	CustomHead.CanTouch = true
+	CustomHead.Massless = false
+	CustomHead.CanCollide = false
+	CustomHead.CanQuery = false
+	CustomHead.CFrame = Root.CFrame + Vector3.new(0, 5, 0)
+	CustomHead.Parent = Character
+	
+	-- Create custom HumanoidRootPart part
+	local CustomRoot = Instance.new("Part")
+	CustomRoot.Name = "HumanoidRootPart"
+	CustomRoot.Shape = Enum.PartType.Block
+	CustomRoot.Size = PART_SIZE
+	CustomRoot.CanTouch = true
+	CustomRoot.Massless = false
+	CustomRoot.CanCollide = false
+	CustomRoot.CanQuery = false
+	CustomRoot.CFrame = Root.CFrame
+	CustomRoot.Parent = Character
+	
+	return CustomHead, CustomRoot
+end
 
 local function SetupCharacter(Character)
 	local function SetupPart(Part)
@@ -57,11 +95,17 @@ local function SetupCharacter(Character)
 		end)
 	end
 
-	local Head = Character:WaitForChild("Head", 10)
-	local Root = Character:WaitForChild("HumanoidRootPart", 10)
+	if UseCustomParts then
+		local CustomHead, CustomRoot = CreateCustomParts(Character)
+		SetupPart(CustomHead)
+		SetupPart(CustomRoot)
+	else
+		local Head = Character:WaitForChild("Head", 10)
+		local Root = Character:WaitForChild("HumanoidRootPart", 10)
 
-	SetupPart(Head)
-	SetupPart(Root)
+		SetupPart(Head)
+		SetupPart(Root)
+	end
 end
 
 local function SetupPlayer(Player)
@@ -92,5 +136,22 @@ ToggleButton.MouseButton1Click:Connect(function()
 		ToggleButton.Text = "Turn On Body Parts"
 	else
 		ToggleButton.Text = "Turn Off Body Parts"
+	end
+end)
+
+SwitchButton.MouseButton1Click:Connect(function()
+	UseCustomParts = not UseCustomParts
+
+	if UseCustomParts then
+		SwitchButton.Text = "Switch to Original Parts"
+	else
+		SwitchButton.Text = "Switch to Custom Parts"
+	end
+	
+	-- Re-setup all players with new part type
+	for _, Player in ipairs(Players:GetPlayers()) do
+		if Player ~= LocalPlayer and Player.Character then
+			SetupCharacter(Player.Character)
+		end
 	end
 end)
