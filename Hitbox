@@ -316,8 +316,7 @@ _G.Mechanics = {
             
             -- Dynamic Scale-Based Weighting Configuration
             if part.Name == "Head" then
-                local isR15 = (hum and hum.RigType == Enum.HumanoidRigType.R15)
-                utils.safeSetProperty(part, "Massless", not isR15) -- False for R15, True for R6
+                utils.safeSetProperty(part, "Massless", true) -- Always True for both R15 and R6
             end
         end)
     end,
