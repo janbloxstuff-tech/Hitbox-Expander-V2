@@ -1,157 +1,208 @@
+-- JanBlox Gui Pro Version (LocalScript)
+-- Place this script in StarterGui (or PlayerScripts) so it runs for the LocalPlayer
+
+-- Original settings from your script
+_G.HeadSize = 50
+_G.Disabled = true -- note: your original script applies the hitbox when this is true
+_G.TargetPart = "HumanoidRootPart" -- can be "HumanoidRootPart" or "Head"
+
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
-local PART_SIZE = Vector3.new(20, 20, 20)
-local Enabled = true
-local UseCustomParts = false
+-- Store original properties so we can restore them later
+local originalProps = {} -- originalProps[player] = { [partName] = {Size, Transparency, BrickColor, Material, CanCollide} }
 
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "JanBlox Gui"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 220, 0, 150)
-MainFrame.Position = UDim2.new(0.5, -110, 0.5, -75)
-MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-MainFrame.Parent = ScreenGui
-
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.BackgroundTransparency = 1
-Title.Text = "JanBlox Gui"
-Title.TextColor3 = Color3.new(1, 1, 1)
-Title.TextScaled = true
-Title.Parent = MainFrame
-
-local ToggleButton = Instance.new("TextButton")
-ToggleButton.Size = UDim2.new(0.9, 0, 0, 40)
-ToggleButton.Position = UDim2.new(0.05, 0, 0.35, 0)
-ToggleButton.Text = "Turn On Body Parts"
-ToggleButton.TextScaled = true
-ToggleButton.Parent = MainFrame
-
-local SwitchButton = Instance.new("TextButton")
-SwitchButton.Size = UDim2.new(0.9, 0, 0, 40)
-SwitchButton.Position = UDim2.new(0.05, 0, 0.65, 0)
-SwitchButton.Text = "Switch to Custom Parts"
-SwitchButton.TextScaled = true
-SwitchButton.Parent = MainFrame
-
-local function CreateCustomParts(Character)
-	local Root = Character:WaitForChild("HumanoidRootPart", 10)
-	
-	-- Create custom Head part
-	local CustomHead = Instance.new("Part")
-	CustomHead.Name = "Head"
-	CustomHead.Shape = Enum.PartType.Ball
-	CustomHead.Size = PART_SIZE
-	CustomHead.CanTouch = true
-	CustomHead.Massless = false
-	CustomHead.CanCollide = false
-	CustomHead.CanQuery = false
-	CustomHead.CFrame = Root.CFrame + Vector3.new(0, 5, 0)
-	CustomHead.Parent = Character
-	
-	-- Create custom HumanoidRootPart part
-	local CustomRoot = Instance.new("Part")
-	CustomRoot.Name = "HumanoidRootPart"
-	CustomRoot.Shape = Enum.PartType.Block
-	CustomRoot.Size = PART_SIZE
-	CustomRoot.CanTouch = true
-	CustomRoot.Massless = false
-	CustomRoot.CanCollide = false
-	CustomRoot.CanQuery = false
-	CustomRoot.CFrame = Root.CFrame
-	CustomRoot.Parent = Character
-	
-	return CustomHead, CustomRoot
+local function storeOriginal(player, partName)
+    if not player or not player.Character then return end
+    if not originalProps[player] then originalProps[player] = {} end
+    if originalProps[player][partName] then return end -- already saved
+    local part = player.Character:FindFirstChild(partName)
+    if part and part:IsA("BasePart") then
+        originalProps[player][partName] = {
+            Size = part.Size,
+            Transparency = part.Transparency,
+            BrickColor = part.BrickColor,
+            Material = part.Material,
+            CanCollide = part.CanCollide,
+        }
+    end
 end
 
-local function SetupCharacter(Character)
-	local function SetupPart(Part)
-		if not Part then
-			return
-		end
+local function applyToPlayer(player)
+    if not player or not player.Character then return end
+    if player == LocalPlayer then return end -- keep same exclusion as original
+    pcall(function()
+        local part = player.Character:FindFirstChild(_G.TargetPart)
+        if not part or not part:IsA("BasePart") then
+            -- fallback to HumanoidRootPart if requested target missing
+            part = player.Character:FindFirstChild("HumanoidRootPart")
+            if not part then return end
+        end
 
-		Part.CanTouch = true
-		Part.Massless = false
-		Part.CanCollide = false
-		Part.CanQuery = false
-
-		task.spawn(function()
-			while Part.Parent do
-				if Enabled then
-					Part.Size = PART_SIZE
-				end
-
-				Part.CanTouch = true
-				Part.Massless = false
-				Part.CanCollide = false
-				Part.CanQuery = false
-
-				task.wait(0.1)
-			end
-		end)
-	end
-
-	if UseCustomParts then
-		local CustomHead, CustomRoot = CreateCustomParts(Character)
-		SetupPart(CustomHead)
-		SetupPart(CustomRoot)
-	else
-		local Head = Character:WaitForChild("Head", 10)
-		local Root = Character:WaitForChild("HumanoidRootPart", 10)
-
-		SetupPart(Head)
-		SetupPart(Root)
-	end
+        storeOriginal(player, part.Name)
+        part.Size = Vector3.new(_G.HeadSize, _G.HeadSize, _G.HeadSize)
+        part.Transparency = 0.7
+        part.BrickColor = BrickColor.new("Really blue")
+        part.Material = Enum.Material.Neon
+        part.CanCollide = false
+    end)
 end
 
-local function SetupPlayer(Player)
-	if Player == LocalPlayer then
-		return
-	end
+local function restorePlayer(player)
+    if not player then return end
+    local data = originalProps[player]
+    if not data or not player.Character then
+        originalProps[player] = nil
+        return
+    end
 
-	if Player.Character then
-		SetupCharacter(Player.Character)
-	end
+    for partName, props in pairs(data) do
+        local part = player.Character:FindFirstChild(partName)
+        if part and part:IsA("BasePart") and props then
+            -- restore saved properties
+            pcall(function()
+                part.Size = props.Size
+                part.Transparency = props.Transparency
+                part.BrickColor = props.BrickColor
+                part.Material = props.Material
+                part.CanCollide = props.CanCollide
+            end)
+        end
+    end
 
-	Player.CharacterAdded:Connect(function(Character)
-		task.wait(1)
-		SetupCharacter(Character)
-	end)
+    originalProps[player] = nil
 end
 
-for _, Player in ipairs(Players:GetPlayers()) do
-	SetupPlayer(Player)
+local function restoreAll()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            restorePlayer(player)
+        end
+    end
 end
 
-Players.PlayerAdded:Connect(SetupPlayer)
-
-ToggleButton.MouseButton1Click:Connect(function()
-	Enabled = not Enabled
-
-	if Enabled then
-		ToggleButton.Text = "Turn On Body Parts"
-	else
-		ToggleButton.Text = "Turn Off Body Parts"
-	end
+-- Reapply or restore on CharacterAdded
+Players.PlayerAdded:Connect(function(player)
+    if player == LocalPlayer then return end
+    player.CharacterAdded:Connect(function()
+        -- small delay to allow parts to exist
+        wait(0.1)
+        if _G.Disabled then
+            applyToPlayer(player)
+        end
+    end)
 end)
 
-SwitchButton.MouseButton1Click:Connect(function()
-	UseCustomParts = not UseCustomParts
+-- If the script starts after players are already present, connect their CharacterAdded and maybe apply
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        player.CharacterAdded:Connect(function()
+            wait(0.1)
+            if _G.Disabled then applyToPlayer(player) end
+        end)
+        -- if character already exists, apply immediately if enabled
+        if player.Character and _G.Disabled then
+            applyToPlayer(player)
+        end
+    end
+end
 
-	if UseCustomParts then
-		SwitchButton.Text = "Switch to Original Parts"
-	else
-		SwitchButton.Text = "Switch to Custom Parts"
-	end
-	
-	-- Re-setup all players with new part type
-	for _, Player in ipairs(Players:GetPlayers()) do
-		if Player ~= LocalPlayer and Player.Character then
-			SetupCharacter(Player.Character)
-		end
-	end
+-- RenderStepped loop preserving original behavior: when _G.Disabled is true we apply the hitbox
+RunService.RenderStepped:Connect(function()
+    if _G.Disabled then
+        for _, v in next, Players:GetPlayers() do
+            if v ~= LocalPlayer then
+                applyToPlayer(v)
+            end
+        end
+    end
+end)
+
+-- Create the GUI
+local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Remove existing GUI with same name to avoid duplicates
+local existing = playerGui:FindFirstChild("JanBlox Gui Pro Version")
+if existing then existing:Destroy() end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "JanBlox Gui Pro Version"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 220, 0, 100)
+frame.Position = UDim2.new(0, 10, 0, 10)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BorderSizePixel = 0
+frame.Parent = screenGui
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 24)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "JanBlox Gui Pro Version"
+title.TextColor3 = Color3.new(1,1,1)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+title.Parent = frame
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleHitboxButton"
+toggleButton.Size = UDim2.new(1, -10, 0, 34)
+toggleButton.Position = UDim2.new(0, 5, 0, 30)
+toggleButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+toggleButton.TextColor3 = Color3.new(1,1,1)
+toggleButton.Font = Enum.Font.Gotham
+toggleButton.TextSize = 14
+toggleButton.Text = "Toggle Hitbox"
+toggleButton.Parent = frame
+
+local changeButton = Instance.new("TextButton")
+changeButton.Name = "ChangeHitboxButton"
+changeButton.Size = UDim2.new(1, -10, 0, 34)
+changeButton.Position = UDim2.new(0, 5, 0, 66)
+changeButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+changeButton.TextColor3 = Color3.new(1,1,1)
+changeButton.Font = Enum.Font.Gotham
+changeButton.TextSize = 14
+changeButton.Text = "Change Hitbox"
+changeButton.Parent = frame
+
+-- Button behaviors
+toggleButton.MouseButton1Click:Connect(function()
+    -- Toggle according to your original pattern: when _G.Disabled == true, the hitbox is active.
+    _G.Disabled = not _G.Disabled
+
+    if not _G.Disabled then
+        -- turning hitbox OFF -> restore everything
+        restoreAll()
+    else
+        -- turning hitbox ON -> apply to all players (will store originals)
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then
+                applyToPlayer(p)
+            end
+        end
+    end
+end)
+
+changeButton.MouseButton1Click:Connect(function()
+    -- Switch between HumanoidRootPart and Head
+    -- before switching, restore previous changes so we don't leave modified parts behind
+    restoreAll()
+    if _G.TargetPart == "HumanoidRootPart" then
+        _G.TargetPart = "Head"
+    else
+        _G.TargetPart = "HumanoidRootPart"
+    end
+    -- If currently enabled, apply to new target immediately
+    if _G.Disabled then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then
+                applyToPlayer(p)
+            end
+        end
+    end
 end)
