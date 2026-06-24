@@ -1,77 +1,154 @@
 -- JanBlox Gui Pro Version (LocalScript)
--- Place this script in StarterGui (or PlayerScripts) so it runs for the LocalPlayer
+-- Place this script in StarterGui (or PlayerGui) so it runs for the LocalPlayer
 
--- Original settings from your script
-_G.HeadSize = 50
-_G.Disabled = true -- note: your original script applies the hitbox when this is true
-_G.TargetPart = "HumanoidRootPart" -- can be "HumanoidRootPart" or "Head"
+-- Default settings per request
+_G.HeadSize = 5               -- default hitbox size
+_G.Disabled = true            -- when true the hitbox is active (matches your original pattern)
+_G.TargetPart = "HumanoidRootPart" -- "HumanoidRootPart" or "Head"
+_G.TeamCheck = false          -- when true, only apply hitboxes to players NOT on your team (if teams exist)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local TeamsService = game:GetService("Teams")
 local LocalPlayer = Players.LocalPlayer
 
 -- Store original properties so we can restore them later
-local originalProps = {} -- originalProps[player] = { [partName] = {Size, Transparency, BrickColor, Material, CanCollide} }
+-- originalProps[player] = { [partName] = { Size, Transparency, BrickColor, Material, CanCollide, CanQuery, MeshClones = {clone,...} } }
+local originalProps = {}
 
-local function storeOriginal(player, partName)
-    if not player or not player.Character then return end
-    if not originalProps[player] then originalProps[player] = {} end
-    if originalProps[player][partName] then return end -- already saved
-    local part = player.Character:FindFirstChild(partName)
-    if part and part:IsA("BasePart") then
-        originalProps[player][partName] = {
-            Size = part.Size,
-            Transparency = part.Transparency,
-            BrickColor = part.BrickColor,
-            Material = part.Material,
-            CanCollide = part.CanCollide,
-        }
+local function safeWait(t)
+    if typeof(t) == "number" and t > 0 then
+        wait(t)
     end
 end
 
-local function applyToPlayer(player)
+local function storeOriginal(player, partName)
     if not player or not player.Character then return end
-    if player == LocalPlayer then return end -- keep same exclusion as original
-    pcall(function()
-        local part = player.Character:FindFirstChild(_G.TargetPart)
-        if not part or not part:IsA("BasePart") then
-            -- fallback to HumanoidRootPart if requested target missing
-            part = player.Character:FindFirstChild("HumanoidRootPart")
-            if not part then return end
-        end
+    originalProps[player] = originalProps[player] or {}
+    if originalProps[player][partName] then return end -- already saved for this character/part
 
-        storeOriginal(player, part.Name)
-        part.Size = Vector3.new(_G.HeadSize, _G.HeadSize, _G.HeadSize)
-        part.Transparency = 0.7
-        part.BrickColor = BrickColor.new("Really blue")
-        part.Material = Enum.Material.Neon
-        part.CanCollide = false
-    end)
+    local part = player.Character:FindFirstChild(partName)
+    if not part or not part:IsA("BasePart") then return end
+
+    local data = {
+        Size = part.Size,
+        Transparency = part.Transparency,
+        BrickColor = part.BrickColor,
+        Material = part.Material,
+        CanCollide = part.CanCollide,
+        CanQuery = part:FindFirstChildWhichIsA and part.CanQuery or nil,
+        MeshClones = {},
+    }
+
+    -- Save and remove mesh children (SpecialMesh, Mesh, BlockMesh)
+    for _, child in ipairs(part:GetChildren()) do
+        if child:IsA("SpecialMesh") or child:IsA("Mesh") or child:IsA("BlockMesh") then
+            -- clone so we can re-add later, then destroy original
+            local ok, clone = pcall(function() return child:Clone() end)
+            if ok and clone then
+                table.insert(data.MeshClones, clone)
+            end
+            pcall(function() child:Destroy() end)
+        end
+    end
+
+    originalProps[player][partName] = data
 end
 
 local function restorePlayer(player)
     if not player then return end
-    local data = originalProps[player]
-    if not data or not player.Character then
+    local pdata = originalProps[player]
+    if not pdata or not player.Character then
         originalProps[player] = nil
         return
     end
 
-    for partName, props in pairs(data) do
+    for partName, props in pairs(pdata) do
         local part = player.Character:FindFirstChild(partName)
         if part and part:IsA("BasePart") and props then
-            -- restore saved properties
             pcall(function()
-                part.Size = props.Size
-                part.Transparency = props.Transparency
-                part.BrickColor = props.BrickColor
-                part.Material = props.Material
-                part.CanCollide = props.CanCollide
+                if props.Size then part.Size = props.Size end
+                if props.Transparency ~= nil then part.Transparency = props.Transparency end
+                if props.BrickColor then part.BrickColor = props.BrickColor end
+                if props.Material then part.Material = props.Material end
+                if props.CanCollide ~= nil then part.CanCollide = props.CanCollide end
+                if props.CanQuery ~= nil and part.GetPropertyChangedSignal then
+                    -- restore CanQuery if supported
+                    pcall(function() part.CanQuery = props.CanQuery end)
+                end
+
+                -- reparent saved mesh clones (if any)
+                if props.MeshClones and #props.MeshClones > 0 then
+                    for _, clone in ipairs(props.MeshClones) do
+                        if clone and clone.Parent == nil then
+                            pcall(function() clone.Parent = part end)
+                        end
+                    end
+                end
             end)
         end
     end
 
     originalProps[player] = nil
+end
+
+local function shouldApplyToPlayer(player)
+    if not player or player == LocalPlayer then return false end
+    if not player.Character then return false end
+    if not _G.Disabled then return false end
+
+    -- Team check logic
+    if _G.TeamCheck then
+        -- only apply if teams exist and local player has a team; otherwise if no teams, fallback to applying to everyone
+        local hasTeams = #TeamsService:GetTeams() > 0
+        if hasTeams and LocalPlayer.Team then
+            -- apply only to players on a different team than local player
+            if player.Team and player.Team == LocalPlayer.Team then
+                return false
+            end
+        end
+    end
+
+    -- Exclude when target part not present
+    local target = _G.TargetPart or "HumanoidRootPart"
+    local part = player.Character:FindFirstChild(target) or player.Character:FindFirstChild("HumanoidRootPart")
+    if not part or not part:IsA("BasePart") then return false end
+
+    -- Exclude dead humanoids
+    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+    if humanoid and humanoid.Health <= 0 then return false end
+
+    return true
+end
+
+local function applyToPlayer(player)
+    if not shouldApplyToPlayer(player) then return end
+    pcall(function()
+        local targetName = _G.TargetPart or "HumanoidRootPart"
+        local part = player.Character:FindFirstChild(targetName)
+        if not part or not part:IsA("BasePart") then
+            part = player.Character:FindFirstChild("HumanoidRootPart")
+            if not part then return end
+            targetName = part.Name
+        end
+
+        storeOriginal(player, part.Name)
+
+        -- Remove any meshes on the part (storeOriginal already removed them when first called)
+        for _, child in ipairs(part:GetChildren()) do
+            if child:IsA("SpecialMesh") or child:IsA("Mesh") or child:IsA("BlockMesh") then
+                pcall(function() child:Destroy() end)
+            end
+        end
+
+        -- Apply requested properties (matching your original values + CanQuery false)
+        part.Size = Vector3.new(_G.HeadSize, _G.HeadSize, _G.HeadSize)
+        part.Transparency = 0.7
+        part.BrickColor = BrickColor.new("Really blue")
+        part.Material = Enum.Material.Neon
+        part.CanCollide = false
+        pcall(function() part.CanQuery = false end)
+    end)
 end
 
 local function restoreAll()
@@ -82,44 +159,69 @@ local function restoreAll()
     end
 end
 
--- Reapply or restore on CharacterAdded
+-- Character lifecycle handling: avoid applying to dead players, re-apply on respawn
+local function onCharacterAdded(player, character)
+    -- small delay for parts to exist
+    safeWait(0.1)
+
+    -- When character spawns, if hitbox enabled, apply to them (subject to team check)
+    if shouldApplyToPlayer(player) then
+        applyToPlayer(player)
+    end
+
+    -- Connect death to restore
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.Died:Connect(function()
+            -- restore and clear stored props on death
+            restorePlayer(player)
+        end)
+    end
+
+    -- When the character is removed (e.g., respawn), restore any lingering modifications
+    player.CharacterRemoving:Connect(function()
+        restorePlayer(player)
+    end)
+end
+
+-- Player added/initialization
 Players.PlayerAdded:Connect(function(player)
     if player == LocalPlayer then return end
-    player.CharacterAdded:Connect(function()
-        -- small delay to allow parts to exist
-        wait(0.1)
-        if _G.Disabled then
-            applyToPlayer(player)
-        end
-    end)
+    player.CharacterAdded:Connect(function(char) onCharacterAdded(player, char) end)
 end)
 
--- If the script starts after players are already present, connect their CharacterAdded and maybe apply
+-- If the script starts after players are already present, attach handlers and maybe apply
 for _, player in ipairs(Players:GetPlayers()) do
     if player ~= LocalPlayer then
-        player.CharacterAdded:Connect(function()
-            wait(0.1)
-            if _G.Disabled then applyToPlayer(player) end
-        end)
-        -- if character already exists, apply immediately if enabled
-        if player.Character and _G.Disabled then
-            applyToPlayer(player)
+        player.CharacterAdded:Connect(function(char) onCharacterAdded(player, char) end)
+        if player.Character then
+            -- apply immediately if enabled
+            safeWait(0.05)
+            if shouldApplyToPlayer(player) then
+                applyToPlayer(player)
+            end
         end
     end
 end
 
--- RenderStepped loop preserving original behavior: when _G.Disabled is true we apply the hitbox
+-- Clean up on player leaving
+Players.PlayerRemoving:Connect(function(player)
+    originalProps[player] = nil
+end)
+
+-- RenderStepped loop: keep applying while enabled (handles players who join / are created after apply)
 RunService.RenderStepped:Connect(function()
-    if _G.Disabled then
-        for _, v in next, Players:GetPlayers() do
-            if v ~= LocalPlayer then
-                applyToPlayer(v)
-            end
+    if not _G.Disabled then return end
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and shouldApplyToPlayer(player) then
+            applyToPlayer(player)
         end
     end
 end)
 
+-- -----------------------
 -- Create the GUI
+-- -----------------------
 local playerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 -- Remove existing GUI with same name to avoid duplicates
@@ -132,11 +234,13 @@ screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 220, 0, 100)
+frame.Size = UDim2.new(0, 260, 0, 140)
 frame.Position = UDim2.new(0, 10, 0, 10)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
 frame.Parent = screenGui
+frame.Active = true
+frame.Draggable = true
 
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 24)
@@ -150,7 +254,7 @@ title.Parent = frame
 
 local toggleButton = Instance.new("TextButton")
 toggleButton.Name = "ToggleHitboxButton"
-toggleButton.Size = UDim2.new(1, -10, 0, 34)
+toggleButton.Size = UDim2.new(0.6, -10, 0, 32)
 toggleButton.Position = UDim2.new(0, 5, 0, 30)
 toggleButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
 toggleButton.TextColor3 = Color3.new(1,1,1)
@@ -161,8 +265,8 @@ toggleButton.Parent = frame
 
 local changeButton = Instance.new("TextButton")
 changeButton.Name = "ChangeHitboxButton"
-changeButton.Size = UDim2.new(1, -10, 0, 34)
-changeButton.Position = UDim2.new(0, 5, 0, 66)
+changeButton.Size = UDim2.new(0.38, -10, 0, 32)
+changeButton.Position = UDim2.new(0.62, 5, 0, 30)
 changeButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
 changeButton.TextColor3 = Color3.new(1,1,1)
 changeButton.Font = Enum.Font.Gotham
@@ -170,18 +274,68 @@ changeButton.TextSize = 14
 changeButton.Text = "Change Hitbox"
 changeButton.Parent = frame
 
+local sizeLabel = Instance.new("TextLabel")
+sizeLabel.Size = UDim2.new(1, -10, 0, 20)
+sizeLabel.Position = UDim2.new(0, 5, 0, 68)
+sizeLabel.BackgroundTransparency = 1
+sizeLabel.TextColor3 = Color3.new(1,1,1)
+sizeLabel.Font = Enum.Font.Gotham
+sizeLabel.TextSize = 14
+sizeLabel.Text = "Hitbox Size: " .. tostring(_G.HeadSize)
+sizeLabel.TextXAlignment = Enum.TextXAlignment.Left
+sizeLabel.Parent = frame
+
+local decreaseButton = Instance.new("TextButton")
+decreaseButton.Name = "DecreaseSizeButton"
+decreaseButton.Size = UDim2.new(0.48, -10, 0, 28)
+decreaseButton.Position = UDim2.new(0, 5, 0, 92)
+decreaseButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+decreaseButton.TextColor3 = Color3.new(1,1,1)
+decreaseButton.Font = Enum.Font.Gotham
+decreaseButton.TextSize = 14
+decreaseButton.Text = "Size -"
+decreaseButton.Parent = frame
+
+local increaseButton = Instance.new("TextButton")
+increaseButton.Name = "IncreaseSizeButton"
+increaseButton.Size = UDim2.new(0.48, -10, 0, 28)
+increaseButton.Position = UDim2.new(0.52, 5, 0, 92)
+increaseButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+increaseButton.TextColor3 = Color3.new(1,1,1)
+increaseButton.Font = Enum.Font.Gotham
+increaseButton.TextSize = 14
+increaseButton.Text = "Size +"
+increaseButton.Parent = frame
+
+local toggleTeamButton = Instance.new("TextButton")
+toggleTeamButton.Name = "ToggleTeamCheckButton"
+toggleTeamButton.Size = UDim2.new(1, -10, 0, 24)
+toggleTeamButton.Position = UDim2.new(0, 5, 0, 124)
+toggleTeamButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+toggleTeamButton.TextColor3 = Color3.new(1,1,1)
+toggleTeamButton.Font = Enum.Font.Gotham
+toggleTeamButton.TextSize = 14
+toggleTeamButton.Text = "Team Check: OFF"
+toggleTeamButton.Parent = frame
+
+local function updateSizeLabel()
+    sizeLabel.Text = "Hitbox Size: " .. tostring(_G.HeadSize)
+end
+
+local function updateTeamButton()
+    toggleTeamButton.Text = "Team Check: " .. ( _G.TeamCheck and "ON" or "OFF" )
+end
+
 -- Button behaviors
 toggleButton.MouseButton1Click:Connect(function()
-    -- Toggle according to your original pattern: when _G.Disabled == true, the hitbox is active.
     _G.Disabled = not _G.Disabled
-
     if not _G.Disabled then
         -- turning hitbox OFF -> restore everything
         restoreAll()
     else
-        -- turning hitbox ON -> apply to all players (will store originals)
+        -- turning hitbox ON -> apply to all players (will store originals), respecting team check
         for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer then
+            if p ~= LocalPlayer and shouldApplyToPlayer(p) then
                 applyToPlayer(p)
             end
         end
@@ -200,9 +354,55 @@ changeButton.MouseButton1Click:Connect(function()
     -- If currently enabled, apply to new target immediately
     if _G.Disabled then
         for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer then
+            if p ~= LocalPlayer and shouldApplyToPlayer(p) then
                 applyToPlayer(p)
             end
         end
     end
 end)
+
+increaseButton.MouseButton1Click:Connect(function()
+    _G.HeadSize = _G.HeadSize + 5
+    updateSizeLabel()
+    -- apply immediately if enabled
+    if _G.Disabled then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and shouldApplyToPlayer(p) then
+                applyToPlayer(p)
+            end
+        end
+    end
+end)
+
+decreaseButton.MouseButton1Click:Connect(function()
+    _G.HeadSize = _G.HeadSize - 5
+    if _G.HeadSize < 1 then _G.HeadSize = 1 end
+    updateSizeLabel()
+    -- apply immediately if enabled
+    if _G.Disabled then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and shouldApplyToPlayer(p) then
+                applyToPlayer(p)
+            end
+        end
+    end
+end)
+
+toggleTeamButton.MouseButton1Click:Connect(function()
+    _G.TeamCheck = not _G.TeamCheck
+    updateTeamButton()
+
+    -- restore then reapply according to new team check state
+    restoreAll()
+    if _G.Disabled then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and shouldApplyToPlayer(p) then
+                applyToPlayer(p)
+            end
+        end
+    end
+end)
+
+-- Initialize UI labels
+updateSizeLabel()
+updateTeamButton()
