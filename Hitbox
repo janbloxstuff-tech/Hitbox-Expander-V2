@@ -942,11 +942,11 @@ npcToggleButton.MouseButton1Click:Connect(function()
 end)
 
 -- CONNECTED MISSING ADJUSTERS: Head Size, RootPart Size, and Transparency
-szMin.MouseButton1Click:Connect(function() _G.HeadSize = math.max(1, _G.HeadSize - 1); szDisp.Text = tostring(_G.HeadSize) end)
-szPls.MouseButton1Click:Connect(function() _G.HeadSize = _G.HeadSize + 1; szDisp.Text = tostring(_G.HeadSize) end)
+szMin.MouseButton1Click:Connect(function() _G.HeadSize = math.max(1, _G.HeadSize - 5); szDisp.Text = tostring(_G.HeadSize) end)
+szPls.MouseButton1Click:Connect(function() _G.HeadSize = _G.HeadSize + 5; szDisp.Text = tostring(_G.HeadSize) end)
 
-rtMin.MouseButton1Click:Connect(function() _G.RootSize = math.max(1, _G.RootSize - 1); rtDisp.Text = tostring(_G.RootSize) end)
-rtPls.MouseButton1Click:Connect(function() _G.RootSize = _G.RootSize + 1; rtDisp.Text = tostring(_G.RootSize) end)
+rtMin.MouseButton1Click:Connect(function() _G.RootSize = math.max(1, _G.RootSize - 5); rtDisp.Text = tostring(_G.RootSize) end)
+rtPls.MouseButton1Click:Connect(function() _G.RootSize = _G.RootSize + 5; rtDisp.Text = tostring(_G.RootSize) end)
 
 trMin.MouseButton1Click:Connect(function() _G.HitboxTransparency = math.max(0, _G.HitboxTransparency - 0.1); trDisp.Text = string.format("%.1f", _G.HitboxTransparency) end)
 trPls.MouseButton1Click:Connect(function() _G.HitboxTransparency = math.min(1, _G.HitboxTransparency + 0.1); trDisp.Text = string.format("%.1f", _G.HitboxTransparency) end)
