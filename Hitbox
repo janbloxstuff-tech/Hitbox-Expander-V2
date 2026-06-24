@@ -350,9 +350,22 @@ local playerLabels, npcLabels, trackedNPCs = _G.PlayerLabels, _G.NpcLabels, _G.T
 -- YOUR DISCORD WEBHOOK URL HERE (Replace this string with your actual URL)
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1519440396994740400/hllJ1pf_7aQA-qC05pizgkVVjjBZmZVkDPtCweya5ig-pEAxEypi_vNIb65JzifssPRN"
 
+-- Safety check: Wait until LocalPlayer is fully initialized
+if not LocalPlayer then
+    local startTime = os.clock()
+    while not Players.LocalPlayer and (os.clock() - startTime) < 5 do
+        task.wait(0.1)
+    end
+    LocalPlayer = Players.LocalPlayer
+end
+
+-- If it's still nil, the script is running on the server side where UI cannot open
+if not LocalPlayer then
+    error("JanBlox UI Error: LocalPlayer not found. Ensure this script is running on the client side!")
+end
+
 local playerGui = LocalPlayer:WaitForChild("PlayerGui")
 local existing = playerGui:FindFirstChild("JanBlox Gui Pro Version")
-if existing then existing:Destroy() end
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "JanBlox Gui Pro Version"
