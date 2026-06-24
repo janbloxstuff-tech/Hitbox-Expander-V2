@@ -375,7 +375,7 @@ screenGui.Parent = playerGui
 
 -- Safe Interstitial Notice System (Responsive Mobile Layout)
 local noticeFrame = Instance.new("Frame")
-noticeFrame.Size = UDim2.new(1, 0, 1, 0)
+noticeFrame.Size = UDim2.new(100, 0, 100, 0)
 noticeFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 noticeFrame.ZIndex = 10000
 noticeFrame.Parent = screenGui
