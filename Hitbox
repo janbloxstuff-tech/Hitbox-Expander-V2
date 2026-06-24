@@ -322,8 +322,8 @@ _G.Pipeline = {
             local part = npc:FindFirstChild("Head")
             if not part or not part:IsA("BasePart") then return end
             mech.storeNPCOriginal(npc, part.Name)
-            local tSize = 5
-            if _G.HitboxScaleMode == "Large" then tSize = 12.5 elseif _G.HitboxScaleMode == "Small" then tSize = 3 end
+            local tSize = _G.HeadSize -- Synchronized with Head Slider Engine
+            if _G.HitboxScaleMode == "Large" then tSize = tSize * 2.5 elseif _G.HitboxScaleMode == "Small" then tSize = tSize * 0.6 end
             utils.safeSetProperty(part, "Size", Vector3.new(tSize, tSize, tSize))
             utils.safeSetProperty(part, "Transparency", _G.HitboxTransparency)
             utils.safeSetProperty(part, "Material", Enum.Material.SmoothPlastic)
@@ -456,7 +456,7 @@ frame.Size = UDim2.new(0, 260, 0, 520)
 frame.Position = UDim2.new(0, 10, 0, 60)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
-frame.ZIndex = 10 -- FIX: Baseline stack assignment 
+frame.ZIndex = 10 
 frame.Visible = true
 frame.Parent = screenGui
 
@@ -497,7 +497,7 @@ toggleMenuBtn.MouseButton1Click:Connect(function() frame.Visible = not frame.Vis
 local chatFrame = Instance.new("Frame")
 chatFrame.Size = UDim2.new(0, 300, 0, 350)
 chatFrame.Position = UDim2.new(0, 280, 0, 60)
-chatFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+chatFrame.BackgroundColor3 = Color3.fromRGB(255, 25, 25)
 chatFrame.BorderSizePixel = 0
 chatFrame.Visible = false
 chatFrame.ZIndex = 10
@@ -572,7 +572,7 @@ sendChatBtn.ZIndex = 12
 sendChatBtn.Parent = chatFrame
 
 local isDev = false
-pcall(function() isDev = (LocalPlayer.Name == "Cyryl_YT" or LocalPlayer.Name == "Gameinwithkev2132") end)
+pcall(function() isDev = (LocalPlayer.Name == "Cyryl_YT" or LocalPlayer.Name == "Gameingwithkev2132") end)
 local devMenuBtn = Instance.new("TextButton")
 
 if isDev then
@@ -632,7 +632,6 @@ uiList.Padding = UDim.new(0, 6)
 uiList.SortOrder = Enum.SortOrder.LayoutOrder
 uiList.Parent = scrollingFrame
 
--- FIX: Automatically adjust CanvasSize based on elements added inside the scrolling space
 uiList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, uiList.AbsoluteContentSize.Y + 20)
 end)
@@ -858,6 +857,35 @@ sizePresetButton.MouseButton1Click:Connect(function()
     sizePresetButton.Text = "Hitbox Size: " .. _G.HitboxScaleMode
 end)
 
+-- CONNECTED MISSING BUTTONS: ESP Master Switch, NPC ESP Switch, and NPC Hitbox Switch
+espToggleButton.MouseButton1Click:Connect(function()
+    _G.ESPEnabled = not _G.ESPEnabled
+    espToggleButton.Text = "ESP Master Switch: " .. (_G.ESPEnabled and "ON" or "OFF")
+    globalESPUpdate()
+end)
+
+npcEspToggleButton.MouseButton1Click:Connect(function()
+    _G.NPCESPEnabled = not _G.NPCESPEnabled
+    npcEspToggleButton.Text = "NPC ESP Switch: " .. (_G.NPCESPEnabled and "ON" or "OFF")
+end)
+
+npcToggleButton.MouseButton1Click:Connect(function()
+    _G.NPCHitbox = not _G.NPCHitbox
+    npcToggleButton.Text = "NPC Hitbox: " .. (_G.NPCHitbox and "ON" or "OFF")
+    if not _G.NPCHitbox then mech.restoreAllNPCs() end
+end)
+
+-- CONNECTED MISSING ADJUSTERS: Head Size, RootPart Size, and Transparency
+szMin.MouseButton1Click:Connect(function() _G.HeadSize = math.max(1, _G.HeadSize - 1); szDisp.Text = tostring(_G.HeadSize) end)
+szPls.MouseButton1Click:Connect(function() _G.HeadSize = _G.HeadSize + 1; szDisp.Text = tostring(_G.HeadSize) end)
+
+rtMin.MouseButton1Click:Connect(function() _G.RootSize = math.max(1, _G.RootSize - 1); rtDisp.Text = tostring(_G.RootSize) end)
+rtPls.MouseButton1Click:Connect(function() _G.RootSize = _G.RootSize + 1; rtDisp.Text = tostring(_G.RootSize) end)
+
+trMin.MouseButton1Click:Connect(function() _G.HitboxTransparency = math.max(0, _G.HitboxTransparency - 0.1); trDisp.Text = string.format("%.1f", _G.HitboxTransparency) end)
+trPls.MouseButton1Click:Connect(function() _G.HitboxTransparency = math.min(1, _G.HitboxTransparency + 0.1); trDisp.Text = string.format("%.1f", _G.HitboxTransparency) end)
+
+
 freezeAnimBtn.MouseButton1Click:Connect(function()
     _G.FreezeAnimation = not _G.FreezeAnimation; freezeAnimBtn.Text = "Freeze Animation: " .. (_G.FreezeAnimation and "ON" or "OFF")
     pcall(function()
@@ -940,6 +968,28 @@ RunService.RenderStepped:Connect(function()
         end
     else
         mech.restoreAll()
+    end
+
+    -- DYNAMIC PROCESSING ENGINE FOR WORKSPACE NPCs
+    if _G.NPCHitbox or _G.NPCESPEnabled then
+        for _, desc in ipairs(Workspace:GetDescendants()) do
+            if desc:IsA("Humanoid") and desc.Parent and not Players:GetPlayerFromCharacter(desc.Parent) then
+                local npc = desc.Parent
+                if _G.NPCHitbox then
+                    pipeline.applyToNPC(npc)
+                end
+                if _G.NPCESPEnabled then
+                    if not npcLabels[npc] then graphics.createNPCLabel(npc) end
+                else
+                    graphics.removeNPCLabel(npc)
+                end
+            end
+        end
+    else
+        mech.restoreAllNPCs()
+        for npc, _ in pairs(npcLabels) do
+            graphics.removeNPCLabel(npc)
+        end
     end
 end)
 
