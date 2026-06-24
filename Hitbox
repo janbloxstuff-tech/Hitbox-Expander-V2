@@ -1,0 +1,96 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local PART_SIZE = Vector3.new(20, 20, 20)
+local Enabled = true
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "JanBlox Gui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 220, 0, 100)
+MainFrame.Position = UDim2.new(0.5, -110, 0.5, -50)
+MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+MainFrame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundTransparency = 1
+Title.Text = "JanBlox Gui"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.TextScaled = true
+Title.Parent = MainFrame
+
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0.9, 0, 0, 40)
+ToggleButton.Position = UDim2.new(0.05, 0, 0.45, 0)
+ToggleButton.Text = "Turn On Body Parts"
+ToggleButton.TextScaled = true
+ToggleButton.Parent = MainFrame
+
+local function SetupCharacter(Character)
+	local function SetupPart(Part)
+		if not Part then
+			return
+		end
+
+		Part.CanTouch = true
+		Part.Massless = false
+		Part.CanCollide = false
+		Part.CanQuery = false
+
+		task.spawn(function()
+			while Part.Parent do
+				if Enabled then
+					Part.Size = PART_SIZE
+				end
+
+				Part.CanTouch = true
+				Part.Massless = false
+				Part.CanCollide = false
+				Part.CanQuery = false
+
+				task.wait(0.1)
+			end
+		end)
+	end
+
+	local Head = Character:WaitForChild("Head", 10)
+	local Root = Character:WaitForChild("HumanoidRootPart", 10)
+
+	SetupPart(Head)
+	SetupPart(Root)
+end
+
+local function SetupPlayer(Player)
+	if Player == LocalPlayer then
+		return
+	end
+
+	if Player.Character then
+		SetupCharacter(Player.Character)
+	end
+
+	Player.CharacterAdded:Connect(function(Character)
+		task.wait(1)
+		SetupCharacter(Character)
+	end)
+end
+
+for _, Player in ipairs(Players:GetPlayers()) do
+	SetupPlayer(Player)
+end
+
+Players.PlayerAdded:Connect(SetupPlayer)
+
+ToggleButton.MouseButton1Click:Connect(function()
+	Enabled = not Enabled
+
+	if Enabled then
+		ToggleButton.Text = "Turn On Body Parts"
+	else
+		ToggleButton.Text = "Turn Off Body Parts"
+	end
+end)
