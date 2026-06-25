@@ -431,7 +431,7 @@ _G.Pipeline = {
 			-- Prevent R6 taller characters from clipping downwards/getting stuck
 			if part.Name == "Head" then 
 				if hum and hum.RigType == Enum.HumanoidRigType.R6 then
-					utils.safeSetProperty(part, "Massless", false)
+					utils.safeSetProperty(part, "Massless", true)
 				else
 					utils.safeSetProperty(part, "Massless", false)
 				end
@@ -454,9 +454,9 @@ _G.Pipeline = {
 
 			local hum = npc:FindFirstChildOfClass("Humanoid")
 			if hum and hum.RigType == Enum.HumanoidRigType.R6 then
-				utils.safeSetProperty(part, "Massless", false)
-			else
 				utils.safeSetProperty(part, "Massless", true)
+			else
+				utils.safeSetProperty(part, "Massless", false)
 			end
 		end)
 	end
@@ -551,7 +551,7 @@ noticeLabel.TextColor3 = Color3.fromRGB(255, 200, 255); noticeLabel.Font = Enum.
 
 local localName = "User"
 pcall(function() localName = LocalPlayer.Name end)
-noticeLabel.Text = "Hello there " .. localName .. ",\nyou are using my script and make sure to give me credit if you're making a video as well.\n\nAlso you can add feedback to the GUI about what I should add next or if you found an issue!\n\nThank you for being a good boy :3 or a good girl :3\n\ Made by Zhu Yuan the Big Ass Bitch"
+noticeLabel.Text = "Hello there " .. localName .. ",\nthank you for using my script and make sure to give me credit if you're making a video as well.\n\nAlso you can reply on the feedback to the GUI about what I should add next or if you found an issue!\n\nThank you for being a good boy :3 or a good girl :3\ Made by Zhu Yuan the Big Ass Bitch\n\Don't worry i like Ju fufu's thick thighs more. And Exploit well!"
 
 local skipBtn = Instance.new("TextButton")
 skipBtn.Size = UDim2.new(0.5, 0, 0, 38); skipBtn.Position = UDim2.new(0.25, 0, 0.75, 0); skipBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
@@ -794,13 +794,62 @@ end)
 
 local showNameButton = bld.createButton("Show Name: ON", 1, settingDropFrame)
 local showHealthButton = bld.createButton("Show Health: ON", 2, settingDropFrame)
-local bypassChatButton = bld.createButton("Bypass Chat: OFF", 3, settingDropFrame) -- New Button Integrated Here
+local bypassChatButton = bld.createButton("Bypass Chat: OFF", 3, settingDropFrame)
 
 _G.BypassChatEnabled = false
+
+-- This function intercepts your messages and places invisible, non-filtering characters between letters
+local function bypassFilter(message)
+	local bypassed = ""
+	for i = 1, #message do
+		local char = message:sub(i, i)
+		-- Injects a hidden mathematical blank space character that Roblox's filter often skips past
+		bypassed = bypassed .. char .. "⁣" 
+	end
+	return bypassed
+end
+
+-- Hooking directly into the chat system pipeline
+task.spawn(function()
+	local TextChatService = game:GetService("TextChatService")
+
+	-- For newer Roblox TextChatService games
+	if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+		TextChatService.SendingMessage:Connect(function(textChatMessage)
+			if _G.BypassChatEnabled and textChatMessage.Text then
+				-- Prevent infinite loops by checking if it's already processed
+				if not string.find(textChatMessage.Text, "⁣") then 
+					textChatMessage.Text = bypassFilter(textChatMessage.Text)
+				end
+			end
+		end)
+	else
+		-- For older legacy chat systems (SayMessageRequest method)
+		local ReplicatedStorage = game:GetService("ReplicatedStorage")
+		local DefaultChatSystemChatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+		local SayMessageRequest = DefaultChatSystemChatEvents and DefaultChatSystemChatEvents:FindFirstChild("SayMessageRequest")
+
+		if SayMessageRequest and SayMessageRequest:IsA("RemoteEvent") then
+			local oldNamecall
+			oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+				local args = {...}
+				local method = getnamecallmethod()
+
+				if _G.BypassChatEnabled and self == SayMessageRequest and method == "FireServer" then
+					if args[1] and type(args[1]) == "string" and not string.find(args[1], "⁣") then
+						args[1] = bypassFilter(args[1])
+						return oldNamecall(self, table.unpack(args))
+					end
+				end
+				return oldNamecall(self, ...)
+			end)
+		end
+	end
+end)
+
 bypassChatButton.MouseButton1Click:Connect(function()
 	_G.BypassChatEnabled = not _G.BypassChatEnabled
 	bypassChatButton.Text = "Bypass Chat: " .. (_G.BypassChatEnabled and "ON" or "OFF")
-	-- You can hook up your custom chat bypass logic / function right here!
 end)
 
 local teamDropdownBtn = bld.createButton("Team Configuration v", 33)
@@ -905,7 +954,7 @@ forcefieldCheckButton.MouseButton1Click:Connect(function()
 end)
 
 teamCheckButton.MouseButton1Click:Connect(function()
-	_G.TeamCheck = not _G.TeamCheck; teamCheckButton.Text = "ESP Team Check: " .. (_G.TeamCheck and "ON" or "OFF")
+	_G.TeamCheck = not _G.TeamCheck; teamCheckButton.Text = "Team Check: " .. (_G.TeamCheck and "ON" or "OFF")
 	if teamDropFrame.Visible then refreshTeamDropdown() end
 	globalESPUpdate()
 end)
@@ -991,6 +1040,19 @@ mobileJumpBtn.MouseButton1Click:Connect(function()
 	mobileJumpBtn.Text = "Mobile Auto Jump: " .. (_G.DisableAutoJump and "OFF" or "ON")
 end)
 
+-- CLICK LISTENER FOR ESP MASTER SWITCH
+espToggleButton.MouseButton1Click:Connect(function()
+	_G.ESPEnabled = not _G.ESPEnabled
+	espToggleButton.Text = "ESP Master Switch: " .. (_G.ESPEnabled and "ON" or "OFF")
+	globalESPUpdate()
+end)
+
+-- CLICK LISTENER FOR NPC ESP SWITCH
+npcEspToggleButton.MouseButton1Click:Connect(function()
+	_G.NPCESPEnabled = not _G.NPCESPEnabled
+	npcEspToggleButton.Text = "NPC ESP Switch: " .. (_G.NPCESPEnabled and "ON" or "OFF")
+end)
+
 -- INDEPENDENT MASTER STATE SWITCHES FOR WALKSPEED / JUMPPOWER
 wsToggleBtn.MouseButton1Click:Connect(function()
 	_G.WalkSpeedToggle = not _G.WalkSpeedToggle
@@ -1038,9 +1100,18 @@ flingBtn.MouseButton1Click:Connect(function() flingEngine.fling(flingInput.Text)
 
 local function updateTeleportMenu()
 	if not teleportDropFrame.Visible then return end
-	for _, c in ipairs(teleportDropFrame:GetChildren()) do if not c:IsA("UIListLayout") then c:Destroy() end end
-	local grouped = {}; local orderCount = 1
 
+	-- Clear old buttons safely
+	for _, c in ipairs(teleportDropFrame:GetChildren()) do 
+		if not c:IsA("UIListLayout") then 
+			c:Destroy() 
+		end 
+	end
+
+	local grouped = {}
+	local orderCount = 1
+
+	-- Group players by team
 	for _, p in ipairs(Players:GetPlayers()) do
 		if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
 			local teamName = p.Team and p.Team.Name or "Neutral"
@@ -1049,20 +1120,42 @@ local function updateTeleportMenu()
 		end
 	end
 
+	-- Generate Headers and Clickable Teleport Buttons
 	for teamName, players in pairs(grouped) do
 		local teamHeader = Instance.new("TextLabel")
-		teamHeader.Size = UDim2.new(1, 0, 0, 24); teamHeader.BackgroundColor3 = Color3.fromRGB(45, 45, 45); teamHeader.TextColor3 = Color3.fromRGB(255, 255, 100)
-		teamHeader.Font = Enum.Font.GothamBold; teamHeader.TextSize = 11; teamHeader.Text = "Team: " .. teamName; teamHeader.LayoutOrder = orderCount; teamHeader.ZIndex = 14; teamHeader.Parent = teleportDropFrame
+		teamHeader.Size = UDim2.new(1, 0, 0, 24)
+		teamHeader.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+		teamHeader.TextColor3 = Color3.fromRGB(255, 255, 100)
+		teamHeader.Font = Enum.Font.GothamBold
+		teamHeader.TextSize = 11
+		teamHeader.Text = "Team: " .. teamName
+		teamHeader.LayoutOrder = orderCount
+		teamHeader.ZIndex = 14
+		teamHeader.Parent = teleportDropFrame
 		orderCount = orderCount + 1
 
 		for _, p in ipairs(players) do
 			local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude)
-			local btn = bld.createButton(p.DisplayName .. " [" .. dist .. " Studs]", orderCount, teleportDropFrame)
+
+			-- Force creation of a functional TextButton directly inside the dropdown frame
+			local btn = Instance.new("TextButton")
+			btn.Size = UDim2.new(1, 0, 0, 34)
+			btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+			btn.TextColor3 = Color3.new(1, 1, 1)
+			btn.Font = Enum.Font.Gotham
+			btn.TextSize = 12
+			btn.Text = p.DisplayName .. " [" .. dist .. " Studs]"
+			btn.LayoutOrder = orderCount
+			btn.ZIndex = 14
+			btn.Parent = teleportDropFrame
+
+			-- Active Teleport Connection Event
 			btn.MouseButton1Click:Connect(function()
 				if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
 					LocalPlayer.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 0)
 				end
 			end)
+
 			orderCount = orderCount + 1
 		end
 	end
