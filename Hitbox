@@ -504,7 +504,7 @@ btnCorner.CornerRadius = UDim.new(0, 6)
 btnCorner.Parent = skipBtn
 
 task.spawn(function()
-    task.delay(6, function() if noticeFrame and noticeFrame.Parent then noticeFrame:Destroy() end end)
+    task.delay(15, function() if noticeFrame and noticeFrame.Parent then noticeFrame:Destroy() end end)
     for i = 3, 1, -1 do
         skipBtn.Text = "OK ("..i..")"
         task.wait(1)
@@ -539,7 +539,7 @@ feedbackLeftBtn.ZIndex = 999
 feedbackLeftBtn.Parent = screenGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 260, 0, 520)
+frame.Size = UDim2.new(0, 380, 0, 700)
 frame.Position = UDim2.new(0, 10, 0, 60)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
@@ -707,7 +707,7 @@ if isDev then devMenuBtn.MouseButton1Click:Connect(function() print("Developer a
 
 -- MAIN INTERFACE FRAME SCROLL REFACTOR
 local scrollingFrame = Instance.new("ScrollingFrame")
-scrollingFrame.Size = UDim2.new(1, -10, 1, -45)
+scrollingFrame.Size = UDim2.new(1, -10, 1, -20)
 scrollingFrame.Position = UDim2.new(0, 5, 0, 40)
 scrollingFrame.BackgroundTransparency = 1
 scrollingFrame.ScrollBarThickness = 6
@@ -720,7 +720,7 @@ uiList.SortOrder = Enum.SortOrder.LayoutOrder
 uiList.Parent = scrollingFrame
 
 uiList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, uiList.AbsoluteContentSize.Y + 20)
+    scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, uiList.AbsoluteContentSize.Y + 100)
 end)
 
 local function createHeader(text, color, order)
@@ -1032,10 +1032,21 @@ end)
 
 enableInvButton.MouseButton1Click:Connect(function()
     _G.InventoryLock = not _G.InventoryLock
-    enableInvButton.Text = "Enable Inventory: " .. (_G.InventoryLock and "ON" or "OFF")
-    pcall(function()
-        -- Directly toggles the Roblox inventory display CoreGui
-        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, _G.InventoryLock)
+
+    enableInvButton.Text =
+        "Enable Inventory: " ..
+        (_G.InventoryLock and "ON" or "OFF")
+
+    task.spawn(function()
+        for i = 1, 10 do
+            pcall(function()
+                StarterGui:SetCoreGuiEnabled(
+                    Enum.CoreGuiType.Backpack,
+                    _G.InventoryLock
+                )
+            end)
+            task.wait(0.2)
+        end
     end)
 end)
 
@@ -1143,6 +1154,19 @@ RunService.RenderStepped:Connect(function()
         end
         for npc, _ in pairs(trackedNPCs) do
             untrackNPC(npc)
+        end
+    end
+end
+
+task.spawn(function()
+    while task.wait(1) do
+        if _G.InventoryLock then
+            pcall(function()
+                StarterGui:SetCoreGuiEnabled(
+                    Enum.CoreGuiType.Backpack,
+                    true
+                )
+            end)
         end
     end
 end)
