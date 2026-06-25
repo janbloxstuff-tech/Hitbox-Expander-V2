@@ -1158,19 +1158,6 @@ RunService.RenderStepped:Connect(function()
     end
 end
 
-task.spawn(function()
-    while task.wait(1) do
-        if _G.InventoryLock then
-            pcall(function()
-                StarterGui:SetCoreGuiEnabled(
-                    Enum.CoreGuiType.Backpack,
-                    true
-                )
-            end)
-        end
-    end
-end)
-
 Players.PlayerAdded:Connect(function(p)
     p.CharacterAdded:Connect(function() task.wait(0.5); globalESPUpdate() end)
     p:GetPropertyChangedSignal("Team"):Connect(function() task.wait(0.1); globalESPUpdate() end)
