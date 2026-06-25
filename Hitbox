@@ -794,6 +794,14 @@ end)
 
 local showNameButton = bld.createButton("Show Name: ON", 1, settingDropFrame)
 local showHealthButton = bld.createButton("Show Health: ON", 2, settingDropFrame)
+local bypassChatButton = bld.createButton("Bypass Chat: OFF", 3, settingDropFrame) -- New Button Integrated Here
+
+_G.BypassChatEnabled = false
+bypassChatButton.MouseButton1Click:Connect(function()
+	_G.BypassChatEnabled = not _G.BypassChatEnabled
+	bypassChatButton.Text = "Bypass Chat: " .. (_G.BypassChatEnabled and "ON" or "OFF")
+	-- You can hook up your custom chat bypass logic / function right here!
+end)
 
 local teamDropdownBtn = bld.createButton("Team Configuration v", 33)
 local teamDropFrame = Instance.new("Frame")
@@ -858,20 +866,24 @@ local function refreshTeamDropdown()
 	end
 end
 
-teamDropdownBtn.MouseButton1Click:Connect(function()
-	teamDropFrame.Visible = not teamDropFrame.Visible
-	teamDropdownBtn.Text = teamDropFrame.Visible and "Team Configuration ^" or "Team Configuration v"
-	if teamDropFrame.Visible then refreshTeamDropdown() end
-end)
-
+-- Dynamic Open/Close Sizing Corrections to prevent button overlapping
 teleportDropdownBtn.MouseButton1Click:Connect(function()
 	teleportDropFrame.Visible = not teleportDropFrame.Visible
 	teleportDropdownBtn.Text = teleportDropFrame.Visible and "Teleport Controls ^" or "Teleport Controls v"
+	teleportDropFrame.Size = teleportDropFrame.Visible and UDim2.new(1, 0, 0, teleportDropLayout.AbsoluteContentSize.Y) or UDim2.new(1, 0, 0, 0)
 end)
 
 settingDropdownBtn.MouseButton1Click:Connect(function()
 	settingDropFrame.Visible = not settingDropFrame.Visible
 	settingDropdownBtn.Text = settingDropFrame.Visible and "Name and Health Settings ^" or "Name and Health Settings v"
+	settingDropFrame.Size = settingDropFrame.Visible and UDim2.new(1, 0, 0, settingDropLayout.AbsoluteContentSize.Y) or UDim2.new(1, 0, 0, 0)
+end)
+
+teamDropdownBtn.MouseButton1Click:Connect(function()
+	teamDropFrame.Visible = not teamDropFrame.Visible
+	teamDropdownBtn.Text = teamDropFrame.Visible and "Team Configuration ^" or "Team Configuration v"
+	if teamDropFrame.Visible then refreshTeamDropdown() end
+	teamDropFrame.Size = teamDropFrame.Visible and UDim2.new(1, 0, 0, teamDropLayout.AbsoluteContentSize.Y) or UDim2.new(1, 0, 0, 0)
 end)
 
 local function handleHitboxToggle()
