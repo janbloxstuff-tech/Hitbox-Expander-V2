@@ -27,6 +27,7 @@ _G.WalkSpeedToggle = false  -- Independent Walkspeed Toggle
 _G.JumpPowerToggle = false  -- Independent Jumppower Toggle
 _G.DayNightToggle = false 
 _G.LoopFullBright = false
+local teleportButtonsCache = {}
 
 -- Dynamic Frame Constraints Configuration Setup Table
 local frameSizes = {
@@ -794,62 +795,57 @@ end)
 
 local showNameButton = bld.createButton("Show Name: ON", 1, settingDropFrame)
 local showHealthButton = bld.createButton("Show Health: ON", 2, settingDropFrame)
-local bypassChatButton = bld.createButton("Bypass Chat: OFF", 3, settingDropFrame)
+local xrayButton = bld.createButton("X-Ray: OFF", 3, settingDropFrame) -- Button converted to XRay
 
-_G.BypassChatEnabled = false
+_G.XRayEnabled = false
+local xrayCache = {} -- Stores original transparency values
 
--- This function intercepts your messages and places invisible, non-filtering characters between letters
-local function bypassFilter(message)
-	local bypassed = ""
-	for i = 1, #message do
-		local char = message:sub(i, i)
-		-- Injects a hidden mathematical blank space character that Roblox's filter often skips past
-		bypassed = bypassed .. char .. "⁣" 
+local function applyXRay()
+	for _, obj in ipairs(workspace:GetDescendants()) do
+		-- Only affect static map geometry, walls, and structural models
+		if obj:IsA("BasePart") and not obj:IsDescendantOf(LocalPlayer.Character) and not game.Players:GetPlayerFromCharacter(obj.Parent) then
+			-- Don't overwrite the cache if it's already recorded
+			if not xrayCache[obj] then
+				xrayCache[obj] = obj.Transparency
+			end
+			obj.Transparency = 0.5
+		end
 	end
-	return bypassed
 end
 
--- Hooking directly into the chat system pipeline
-task.spawn(function()
-	local TextChatService = game:GetService("TextChatService")
-
-	-- For newer Roblox TextChatService games
-	if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-		TextChatService.SendingMessage:Connect(function(textChatMessage)
-			if _G.BypassChatEnabled and textChatMessage.Text then
-				-- Prevent infinite loops by checking if it's already processed
-				if not string.find(textChatMessage.Text, "⁣") then 
-					textChatMessage.Text = bypassFilter(textChatMessage.Text)
-				end
-			end
-		end)
-	else
-		-- For older legacy chat systems (SayMessageRequest method)
-		local ReplicatedStorage = game:GetService("ReplicatedStorage")
-		local DefaultChatSystemChatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-		local SayMessageRequest = DefaultChatSystemChatEvents and DefaultChatSystemChatEvents:FindFirstChild("SayMessageRequest")
-
-		if SayMessageRequest and SayMessageRequest:IsA("RemoteEvent") then
-			local oldNamecall
-			oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-				local args = {...}
-				local method = getnamecallmethod()
-
-				if _G.BypassChatEnabled and self == SayMessageRequest and method == "FireServer" then
-					if args[1] and type(args[1]) == "string" and not string.find(args[1], "⁣") then
-						args[1] = bypassFilter(args[1])
-						return oldNamecall(self, table.unpack(args))
-					end
-				end
-				return oldNamecall(self, ...)
+local function removeXRay()
+	for obj, originalTransparency in pairs(xrayCache) do
+		if obj and obj.Parent then
+			pcall(function()
+				obj.Transparency = originalTransparency
 			end)
 		end
 	end
+	table.clear(xrayCache)
+end
+
+xrayButton.MouseButton1Click:Connect(function()
+	_G.XRayEnabled = not _G.XRayEnabled
+	xrayButton.Text = "X-Ray: " .. (_G.XRayEnabled and "ON" or "OFF")
+
+	if _G.XRayEnabled then
+		applyXRay()
+	else
+		removeXRay()
+	end
 end)
 
-bypassChatButton.MouseButton1Click:Connect(function()
-	_G.BypassChatEnabled = not _G.BypassChatEnabled
-	bypassChatButton.Text = "Bypass Chat: " .. (_G.BypassChatEnabled and "ON" or "OFF")
+-- Connect to Workspace to automatically catch new map parts streaming or spawning in
+workspace.DescendantAdded:Connect(function(desc)
+	if _G.XRayEnabled and desc:IsA("BasePart") then
+		if not desc:IsDescendantOf(LocalPlayer.Character) and not game.Players:GetPlayerFromCharacter(desc.Parent) then
+			task.wait(0.1) -- Small delay to allow the game engine to set default properties first
+			if not xrayCache[desc] then
+				xrayCache[desc] = desc.Transparency
+			end
+			desc.Transparency = 0.5
+		end
+	end
 end)
 
 local teamDropdownBtn = bld.createButton("Team Configuration v", 33)
@@ -1098,29 +1094,28 @@ end)
 
 flingBtn.MouseButton1Click:Connect(function() flingEngine.fling(flingInput.Text) end)
 
-local function updateTeleportMenu()
+local function rebuildTeleportMenu()
 	if not teleportDropFrame.Visible then return end
 
-	-- Clear old buttons safely
+	-- Clear old entries and connections safely
 	for _, c in ipairs(teleportDropFrame:GetChildren()) do 
-		if not c:IsA("UIListLayout") then 
-			c:Destroy() 
-		end 
+		if not c:IsA("UIListLayout") then c:Destroy() end 
 	end
+	table.clear(teleportButtonsCache)
 
 	local grouped = {}
 	local orderCount = 1
 
 	-- Group players by team
 	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+		if p ~= LocalPlayer then
 			local teamName = p.Team and p.Team.Name or "Neutral"
 			if not grouped[teamName] then grouped[teamName] = {} end
 			table.insert(grouped[teamName], p)
 		end
 	end
 
-	-- Generate Headers and Clickable Teleport Buttons
+	-- Generate Headers and Static Clickable Teleport Buttons
 	for teamName, players in pairs(grouped) do
 		local teamHeader = Instance.new("TextLabel")
 		teamHeader.Size = UDim2.new(1, 0, 0, 24)
@@ -1135,34 +1130,63 @@ local function updateTeleportMenu()
 		orderCount = orderCount + 1
 
 		for _, p in ipairs(players) do
-			local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude)
-
-			-- Force creation of a functional TextButton directly inside the dropdown frame
 			local btn = Instance.new("TextButton")
 			btn.Size = UDim2.new(1, 0, 0, 34)
 			btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 			btn.TextColor3 = Color3.new(1, 1, 1)
 			btn.Font = Enum.Font.Gotham
 			btn.TextSize = 12
-			btn.Text = p.DisplayName .. " [" .. dist .. " Studs]"
+			btn.Text = p.DisplayName .. " [Calculating...]"
 			btn.LayoutOrder = orderCount
 			btn.ZIndex = 14
 			btn.Parent = teleportDropFrame
 
-			-- Active Teleport Connection Event
+			-- This connection is now PERMANENT and won't get deleted every frame!
 			btn.MouseButton1Click:Connect(function()
 				if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
 					LocalPlayer.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 0)
 				end
 			end)
 
+			-- Cache it so RenderStepped can change the text safely
+			teleportButtonsCache[p] = btn
 			orderCount = orderCount + 1
 		end
 	end
 end
 
+local function updateTeleportDistances()
+	if not teleportDropFrame.Visible then return end
+
+	for player, button in pairs(teleportButtonsCache) do
+		if player and player.Parent and button then -- Fixed the syntax error here!
+			if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+				local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude)
+				button.Text = player.DisplayName .. " [" .. dist .. " Studs]"
+			else
+				button.Text = player.DisplayName .. " [Unknown Location]"
+			end
+		end
+	end
+end
+
+-- 3. UPDATE YOUR DROPDOWN CLICK TO REBUILD ON DEMAND
+teleportDropdownBtn.MouseButton1Click:Connect(function()
+	teleportDropFrame.Visible = not teleportDropFrame.Visible
+	teleportDropdownBtn.Text = teleportDropFrame.Visible and "Teleport Controls ^" or "Teleport Controls v"
+	teleportDropFrame.Size = teleportDropFrame.Visible and UDim2.new(1, 0, 0, teleportDropLayout.AbsoluteContentSize.Y) or UDim2.new(1, 0, 0, 0)
+
+	if teleportDropFrame.Visible then
+		rebuildTeleportMenu()
+	end
+end)
+
+-- 4. CONNECT EXTRA CLEANUP SIGNALS SO IT REBUILDS IF SOMEONE LEAVES OR JOINS
+Players.PlayerAdded:Connect(function() task.wait(0.5); rebuildTeleportMenu() end)
+Players.PlayerRemoving:Connect(function() task.wait(0.1); rebuildTeleportMenu() end)
+
 RunService.RenderStepped:Connect(function()
-	updateTeleportMenu()
+	rebuildTeleportMenu()
 	globalESPUpdate()
 
 	if _G.LoopFullBright then Lighting.Ambient = Color3.fromRGB(255, 255, 255); Lighting.Brightness = 2; Lighting.ClockTime = 14 end
