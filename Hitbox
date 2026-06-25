@@ -707,7 +707,7 @@ if isDev then devMenuBtn.MouseButton1Click:Connect(function() print("Developer a
 
 -- MAIN INTERFACE FRAME SCROLL REFACTOR
 local scrollingFrame = Instance.new("ScrollingFrame")
-scrollingFrame.Size = UDim2.new(1, -10, 1, -20)
+scrollingFrame.Size = UDim2.new(1, -10, 1, -45)
 scrollingFrame.Position = UDim2.new(0, 5, 0, 40)
 scrollingFrame.BackgroundTransparency = 1
 scrollingFrame.ScrollBarThickness = 6
@@ -720,7 +720,7 @@ uiList.SortOrder = Enum.SortOrder.LayoutOrder
 uiList.Parent = scrollingFrame
 
 uiList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, uiList.AbsoluteContentSize.Y + 100)
+    scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, uiList.AbsoluteContentSize.Y + 20)
 end)
 
 local function createHeader(text, color, order)
