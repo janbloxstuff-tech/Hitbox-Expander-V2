@@ -24,6 +24,7 @@ _G.PlayerModEnabled = false
 _G.FreezeAnimation = false
 _G.DayNightToggle = false -- false = Normal, true = Night Force
 _G.LoopFullBright = false
+_G.InventoryLock = false
 
 -- Dynamic Filter Collections
 _G.DisabledTeams = _G.DisabledTeams or {}
@@ -1032,7 +1033,17 @@ end)
 
 enableInvButton.MouseButton1Click:Connect(function()
     _G.InventoryLock = not _G.InventoryLock
-    enableInvButton.Text = "Enable Inventory: " .. (_G.InventoryLock and "ON" or "OFF")
+
+    enableInvButton.Text =
+        "Enable Inventory: " ..
+        (_G.InventoryLock and "ON" or "OFF")
+
+    pcall(function()
+        StarterGui:SetCoreGuiEnabled(
+            Enum.CoreGuiType.Backpack,
+            _G.InventoryLock
+        )
+    end)
 end)
 
 wsMin.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomWalkSpeed = math.max(0, _G.CustomWalkSpeed - 2); wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
@@ -1152,12 +1163,9 @@ for _, p in ipairs(Players:GetPlayers()) do
 end
 
 task.spawn(function()
-    while task.wait(0.1) do
-        if _G.InventoryLock then
-            pcall(function()
-                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
-            end)
-        end
+    while task.wait(1) do
+        pcall(function()
+            StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, _G.InventoryLock)
+        end)
     end
 end)
-
