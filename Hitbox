@@ -862,25 +862,7 @@ xrayButton.MouseButton1Click:Connect(function()
 	end
 end)
 
-jumpscareDropdownBtn.MouseButton1Click:Connect(function()
-	jumpscareDropFrame.Visible = not jumpscareDropFrame.Visible
-
-	jumpscareDropdownBtn.Text =
-		jumpscareDropFrame.Visible
-		and "Jumpscare Players ^"
-		or "Jumpscare Players v"
-
-	jumpscareDropFrame.Size =
-		jumpscareDropFrame.Visible
-		and UDim2.new(1,0,0,jumpscareLayout.AbsoluteContentSize.Y)
-		or UDim2.new(1,0,0,0)
-end)
-
 local function updateJumpscareMenu()
-	if not jumpscareDropFrame.Visible then
-		return
-	end
-
 	for _, v in ipairs(jumpscareDropFrame:GetChildren()) do
 		if not v:IsA("UIListLayout") then
 			v:Destroy()
@@ -891,41 +873,51 @@ local function updateJumpscareMenu()
 
 	for _, plr in ipairs(Players:GetPlayers()) do
 		if plr ~= LocalPlayer then
-
 			local btn = Instance.new("TextButton")
 			btn.Size = UDim2.new(1,0,0,34)
 			btn.BackgroundColor3 = Color3.fromRGB(80,40,40)
 			btn.TextColor3 = Color3.new(1,1,1)
 			btn.Font = Enum.Font.GothamBold
 			btn.TextSize = 12
-			btn.Text = plr.DisplayName
+			btn.Text = plr.DisplayName .. " (" .. plr.Name .. ")"
 			btn.LayoutOrder = order
 			btn.Parent = jumpscareDropFrame
 
 			btn.MouseButton1Click:Connect(function()
+				local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+				local targetRoot = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
 
-				local targetChar = plr.Character
-				local myChar = LocalPlayer.Character
-
-				if not targetChar or not myChar then
-					return
+				if myRoot and targetRoot then
+					myRoot.CFrame = targetRoot.CFrame * CFrame.new(0,0,-1)
 				end
-
-				local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
-				local myRoot = myChar:FindFirstChild("HumanoidRootPart")
-
-				if targetRoot and myRoot then
-					myRoot.CFrame =
-						targetRoot.CFrame *
-						CFrame.new(0, 0, -1)
-				end
-
 			end)
 
 			order += 1
 		end
 	end
+
+	jumpscareDropFrame.Size = UDim2.new(
+		1,
+		0,
+		0,
+		jumpscareLayout.AbsoluteContentSize.Y
+	)
 end
+
+jumpscareDropdownBtn.MouseButton1Click:Connect(function()
+	jumpscareDropFrame.Visible = not jumpscareDropFrame.Visible
+
+	jumpscareDropdownBtn.Text =
+		jumpscareDropFrame.Visible and
+		"Jumpscare Players ^" or
+		"Jumpscare Players v"
+
+	if jumpscareDropFrame.Visible then
+		updateJumpscareMenu()
+	else
+		jumpscareDropFrame.Size = UDim2.new(1,0,0,0)
+	end
+end)
 
 -- Connect to Workspace to automatically catch new map parts streaming or spawning in
 workspace.DescendantAdded:Connect(function(desc)
@@ -1306,7 +1298,6 @@ end
 RunService.RenderStepped:Connect(function()
 	updateTeleportMenu()
 	globalESPUpdate()
-	updateJumpscareMenu()
 
 	if _G.LoopFullBright then Lighting.Ambient = Color3.fromRGB(255, 255, 255); Lighting.Brightness = 2; Lighting.ClockTime = 14 end
 	if _G.DayNightToggle and not _G.LoopFullBright then Lighting.ClockTime = 0 end
