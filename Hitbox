@@ -647,11 +647,15 @@ end
 local function updateTeleportMenu()
     if not teleportDropFrame.Visible then return end
     
+    -- Clear current children
     for _, c in ipairs(teleportDropFrame:GetChildren()) do 
         if not c:IsA("UIListLayout") then c:Destroy() end 
     end
-
+    
     local grouped = {}
+    local orderCount = 1
+    
+    -- Group players by team
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             local teamName = p.Team and p.Team.Name or "Neutral"
@@ -660,18 +664,32 @@ local function updateTeleportMenu()
         end
     end
     
+    -- Build the headers and buttons
     for teamName, players in pairs(grouped) do
-        local header = bld.createHeader("Team: " .. teamName, Color3.fromRGB(255, 255, 100), 1)
+        -- 1. Create Header manually to ensure it parents to the Dropdown Frame
+        local header = Instance.new("TextLabel")
+        header.Name = "TeamHeader_" .. teamName
+        header.Size = UDim2.new(1, 0, 0, 24)
+        header.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        header.TextColor3 = Color3.fromRGB(255, 255, 100)
+        header.Font = Enum.Font.GothamBold
+        header.TextSize = 12
+        header.Text = "Team: " .. teamName
+        header.LayoutOrder = orderCount
+        header.ZIndex = 15
         header.Parent = teleportDropFrame
+        orderCount = orderCount + 1
         
+        -- 2. Create Player Buttons
         for _, p in ipairs(players) do
             local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude)
-            local btn = bld.createButton(p.DisplayName .. " [" .. dist .. " Studs]", 2, teleportDropFrame)
+            local btn = bld.createButton(p.DisplayName .. " [" .. dist .. " Studs]", orderCount, teleportDropFrame)
             btn.MouseButton1Click:Connect(function()
                 if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                     LocalPlayer.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 0)
                 end
             end)
+            orderCount = orderCount + 1
         end
     end
 end
