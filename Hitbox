@@ -1165,3 +1165,16 @@ end)
 for _, p in ipairs(Players:GetPlayers()) do
     p:GetPropertyChangedSignal("Team"):Connect(function() globalESPUpdate() end)
 end
+
+task.spawn(function()
+    while task.wait(1) do
+        if _G.InventoryLock then
+            pcall(function()
+                StarterGui:SetCoreGuiEnabled(
+                    Enum.CoreGuiType.Backpack,
+                    true
+                )
+            end)
+        end
+    end
+end)
