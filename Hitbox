@@ -646,12 +646,14 @@ end
 
 local function updateTeleportMenu()
     if not teleportDropFrame.Visible then return end
-    -- Clear and rebuild groups
-    for _, c in ipairs(teleportDropFrame:GetChildren()) do if not c:IsA("UIListLayout") then c:Destroy() end end
     
+    for _, c in ipairs(teleportDropFrame:GetChildren()) do 
+        if not c:IsA("UIListLayout") then c:Destroy() end 
+    end
+
     local grouped = {}
     for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character then
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             local teamName = p.Team and p.Team.Name or "Neutral"
             if not grouped[teamName] then grouped[teamName] = {} end
             table.insert(grouped[teamName], p)
@@ -659,12 +661,14 @@ local function updateTeleportMenu()
     end
     
     for teamName, players in pairs(grouped) do
-        local head = bld.createHeader("Team: " .. teamName, Color3.fromRGB(255, 255, 255), 1)
-        head.Parent = teleportDropFrame
+        local header = bld.createHeader("Team: " .. teamName, Color3.fromRGB(255, 255, 100), 1)
+        header.Parent = teleportDropFrame
+        
         for _, p in ipairs(players) do
-            local b = bld.createButton(p.DisplayName, 2, teleportDropFrame)
-            b.MouseButton1Click:Connect(function()
-                if LocalPlayer.Character and p.Character then
+            local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude)
+            local btn = bld.createButton(p.DisplayName .. " [" .. dist .. " Studs]", 2, teleportDropFrame)
+            btn.MouseButton1Click:Connect(function()
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                     LocalPlayer.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 0)
                 end
             end)
