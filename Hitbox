@@ -234,8 +234,9 @@ _G.GraphicsEngine = {
             playerLabels[player] = nil
         end
 
-        local char = player.Character or player.CharacterAdded:Wait()
-        local root = char:WaitForChild("Head", 3) or char:FindFirstChild("HumanoidRootPart")
+        local char = player.Character
+        if not char then return end
+        local root = char:WaitForChild("Head", 5) or char:FindFirstChild("HumanoidRootPart")
         if not root then return end
 
         pcall(function()
@@ -259,24 +260,33 @@ _G.GraphicsEngine = {
 
             playerLabels[player] = { gui = bGui, label = lbl }
 
+            -- Immediate tick setup before handing off to the worker thread loop
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            local nameStr = _G.ShowName and player.DisplayName or ""
+            local healthStr = ""
+            if hum and _G.ShowHealth then
+                healthStr = hum.Health <= 0 and " [Dead]" or " [" .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth) .. "]"
+            end
+            lbl.Text = nameStr .. healthStr
+
             task.spawn(function()
                 while bGui and bGui.Parent and player.Parent and player.Character == char do
-                    local hum = char:FindFirstChildOfClass("Humanoid")
+                    local currentHum = char:FindFirstChildOfClass("Humanoid")
                     lbl.TextColor3 = utils.getTeamColor(player)
 
-                    local nameStr = _G.ShowName and player.DisplayName or ""
-                    local healthStr = ""
+                    local currentNameStr = _G.ShowName and player.DisplayName or ""
+                    local currentHealthStr = ""
 
-                    if hum and _G.ShowHealth then
-                        if hum.Health <= 0 then
-                            healthStr = " [Dead]"
+                    if currentHum and _G.ShowHealth then
+                        if currentHum.Health <= 0 then
+                            currentHealthStr = " [Dead]"
                         else
-                            healthStr = " [" .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth) .. "]"
+                            currentHealthStr = " [" .. math.floor(currentHum.Health) .. "/" .. math.floor(currentHum.MaxHealth) .. "]"
                         end
                     end
 
-                    lbl.Text = nameStr .. healthStr
-                    task.wait(0.2)
+                    lbl.Text = currentNameStr .. currentHealthStr
+                    task.wait(0.1)
                 end
             end)
         end)
@@ -1033,13 +1043,37 @@ Players.PlayerAdded:Connect(function(p)
     p:GetPropertyChangedSignal("Team"):Connect(function() task.wait(0.1); globalESPUpdate() end)
 end)
 
-for _, p in ipairs(Players:GetPlayers()) do
-    p:GetPropertyChangedSignal("Team"):Connect(function() globalESPUpdate() end)
+local function connectPlayerSignals(p)
+    local function setupChar(char)
+        -- Clear dirty memory references left over from their previous dead life cycle
+        graphics.removeESPHighlight(p)
+        graphics.removeESPLabel(p)
+        
+        -- Enforce a clean pipeline draw the structural millisecond their head registers on spawn
+        local head = char:WaitForChild("Head", 5)
+        if head then
+            task.wait(0.05) -- Minor framework adjustment window
+            globalESPUpdate()
+        end
+    end
+
+    if p.Character then task.spawn(setupChar, p.Character) end
+    p.CharacterAdded:Connect(setupChar)
+    p:GetPropertyChangedSignal("Team"):Connect(function() task.wait(0.05) globalESPUpdate() end)
 end
+
+-- Initialize the tracking pipeline for every player in-game instantly
+for _, p in ipairs(Players:GetPlayers()) do
+    if p ~= LocalPlayer then
+        connectPlayerSignals(p)
+    end
+end
+
+Players.PlayerAdded:Connect(connectPlayerSignals)
 
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.spawn(function()
-        local hum = char:WaitForChild("Humanoid", 3)
+        local hum = char:WaitForChild("Humanoid", 5)
         if hum then
             poseToggleButton.Text = getRigTypeLabel()
         end
