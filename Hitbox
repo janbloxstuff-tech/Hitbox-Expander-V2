@@ -423,7 +423,7 @@ _G.Pipeline = {
             -- Prevent R6 taller characters from clipping downwards/getting stuck
             if part.Name == "Head" then 
                 if hum and hum.RigType == Enum.HumanoidRigType.R6 then
-                    utils.safeSetProperty(part, "Massless", false)
+                    utils.safeSetProperty(part, "Massless", true)
                 else
                     utils.safeSetProperty(part, "Massless", true)
                 end
