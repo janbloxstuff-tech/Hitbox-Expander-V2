@@ -35,6 +35,7 @@ local playerLabels = _G.PlayerLabels or {}
 local npcLabels = _G.NpcLabels or {}
 local trackedNPCs = _G.TrackedNPCs or {}
 local hiddenGuis = _G.HiddenGuis or {}
+local characterSpawnTimes = {}
 
 _G.OriginalProps = originalProps
 _G.NpcHitboxes = npcHitboxes
@@ -204,18 +205,41 @@ _G.GraphicsEngine = {
     removeNPCLabel = function(npc)
         if npcLabels[npc] then pcall(function() npcLabels[npc].gui:Destroy() end) npcLabels[npc] = nil end
     end,
-    createESPHighlight = function(player)
-        if not player.Character then return end
-        for _, c in ipairs(player.Character:GetChildren()) do if c:IsA("Highlight") then pcall(function() c:Destroy() end) end end
-        pcall(function()
-            local hl = Instance.new("Highlight")
-            hl.Adornee = player.Character
-            hl.FillColor = utils.getTeamColor(player)
-            hl.OutlineColor = utils.getTeamColor(player)
-            hl.Parent = player.Character
-            espHighlights[player] = hl
-        end)
-    end,
+createESPHighlight = function(player)
+    if not player.Character then
+        return
+    end
+
+    if _G.CheckForcefield and player.Character:FindFirstChildOfClass("ForceField") then
+        if espHighlights[player] then
+            pcall(function()
+                espHighlights[player]:Destroy()
+            end)
+            espHighlights[player] = nil
+        end
+        return
+    end
+
+    for _, c in ipairs(player.Character:GetChildren()) do
+        if c:IsA("Highlight") then
+            pcall(function()
+                c:Destroy()
+            end)
+        end
+    end
+
+    pcall(function()
+        local teamColor = utils.getTeamColor(player)
+
+        local hl = Instance.new("Highlight")
+        hl.Adornee = player.Character
+        hl.FillColor = teamColor
+        hl.OutlineColor = teamColor
+        hl.Parent = player.Character
+
+        espHighlights[player] = hl
+    end)
+end,
     createESPLabel = function(player)
     -- Clean up any existing label first
     if playerLabels[player] then
@@ -264,6 +288,8 @@ _G.GraphicsEngine = {
                 and player.Character == char do
 
                 local hum = char:FindFirstChildOfClass("Humanoid")
+
+                lbl.TextColor3 = utils.getTeamColor(player)
 
                 local teamColor = utils.getTeamColor(player)
                 if teamColor ~= lastColor then
@@ -414,11 +440,23 @@ _G.Pipeline = {
     return
 end
 
-if _G.CheckForcefield and player.Character:FindFirstChildOfClass("ForceField") then
+if _G.CheckForcefield then
+local spawnTime = characterSpawnTimes[player]
+
+if spawnTime and (tick() - spawnTime) < 3 then
     if originalProps[player] then
         mech.restorePlayer(player)
     end
     return
+end
+    local ff = player.Character:FindFirstChildOfClass("ForceField")
+
+    if ff then
+        if originalProps[player] then
+            mech.restorePlayer(player)
+        end
+        return
+    end
 end
         local char = player.Character
         local hum = char:FindFirstChildOfClass("Humanoid")
@@ -540,8 +578,8 @@ btnCorner.CornerRadius = UDim.new(0, 6)
 btnCorner.Parent = skipBtn
 
 task.spawn(function()
-    task.delay(15, function() if noticeFrame and noticeFrame.Parent then noticeFrame:Destroy() end end)
-    for i = 3, 1, -1 do
+    task.delay(30, function() if noticeFrame and noticeFrame.Parent then noticeFrame:Destroy() end end)
+    for i = 5, 1, -1 do
         skipBtn.Text = "OK ("..i..")"
         task.wait(1)
     end
@@ -1073,12 +1111,13 @@ enableInvButton.MouseButton1Click:Connect(function()
         "Enable Inventory: " ..
         (_G.InventoryLock and "OFF" or "ON")
 
-    pcall(function()
+ pcall(function()
+    if not _G.InventoryLock then
         StarterGui:SetCoreGuiEnabled(
             Enum.CoreGuiType.Backpack,
-            not _G.InventoryLock
+            true
         )
-    end)
+    end
 end)
 
 wsMin.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomWalkSpeed = math.max(0, _G.CustomWalkSpeed - 2); wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
@@ -1190,20 +1229,31 @@ RunService.RenderStepped:Connect(function()
 end)
 
 Players.PlayerAdded:Connect(function(p)
-    p.CharacterAdded:Connect(function() task.wait(0.5); globalESPUpdate() end)
-    p:GetPropertyChangedSignal("Team"):Connect(function() task.wait(0.1); globalESPUpdate() end)
+
+    p.CharacterAdded:Connect(function()
+        characterSpawnTimes[p] = tick()
+        task.wait(0.5)
+        globalESPUpdate()
+    end)
+
+    p:GetPropertyChangedSignal("Team"):Connect(function()
+        task.wait(0.1)
+        globalESPUpdate()
+    end)
 end)
+
 for _, p in ipairs(Players:GetPlayers()) do
     p:GetPropertyChangedSignal("Team"):Connect(function() globalESPUpdate() end)
 end
 
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(1)
-
-    pcall(function()
-        StarterGui:SetCoreGuiEnabled(
-            Enum.CoreGuiType.Backpack,
-            not _G.InventoryLock
-        )
-    end)
+    if not _G.InventoryLock then
+        pcall(function()
+            StarterGui:SetCoreGuiEnabled(
+                Enum.CoreGuiType.Backpack,
+                true
+            )
+        end)
+    end
 end)
