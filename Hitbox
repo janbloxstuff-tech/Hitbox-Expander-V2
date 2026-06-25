@@ -16,13 +16,15 @@ _G.TeamCheck = false
 _G.CheckForcefield = false 
 _G.LayModEnabled = false 
 _G.FlingTarget = ""
-_G.DisableAutoJump = false -- Mobile Auto-Jump state modifier
+_G.DisableAutoJump = false 
 
 -- Player Config Settings & Bypass Variables
 _G.CustomWalkSpeed = 16
 _G.CustomJumpPower = 50
 _G.PlayerModEnabled = false
-_G.DayNightToggle = false -- false = Normal, true = Night Force
+_G.WalkSpeedToggle = false  -- Independent Walkspeed Toggle
+_G.JumpPowerToggle = false  -- Independent Jumppower Toggle
+_G.DayNightToggle = false 
 _G.LoopFullBright = false
 
 -- Dynamic Filter Collections
@@ -260,7 +262,6 @@ _G.GraphicsEngine = {
 
             playerLabels[player] = { gui = bGui, label = lbl }
 
-            -- Immediate tick setup before handing off to the worker thread loop
             local hum = char:FindFirstChildOfClass("Humanoid")
             local nameStr = _G.ShowName and player.DisplayName or ""
             local healthStr = ""
@@ -418,7 +419,15 @@ _G.Pipeline = {
             utils.safeSetProperty(part, "Material", Enum.Material.SmoothPlastic)
             utils.safeSetProperty(part, "CanCollide", false)
             utils.safeSetProperty(part, "CanTouch", true)
-            if part.Name == "Head" then utils.safeSetProperty(part, "Massless", true) end
+            
+            -- Prevent R6 taller characters from clipping downwards/getting stuck
+            if part.Name == "Head" then 
+                if hum and hum.RigType == Enum.HumanoidRigType.R6 then
+                    utils.safeSetProperty(part, "Massless", false)
+                else
+                    utils.safeSetProperty(part, "Massless", true)
+                end
+            end
         end)
     end,
     applyToNPC = function(npc)
@@ -434,7 +443,13 @@ _G.Pipeline = {
             utils.safeSetProperty(part, "Material", Enum.Material.SmoothPlastic)
             utils.safeSetProperty(part, "CanCollide", false)
             utils.safeSetProperty(part, "CanTouch", true)
-            utils.safeSetProperty(part, "Massless", true)
+            
+            local hum = npc:FindFirstChildOfClass("Humanoid")
+            if hum and hum.RigType == Enum.HumanoidRigType.R6 then
+                utils.safeSetProperty(part, "Massless", false)
+            else
+                utils.safeSetProperty(part, "Massless", true)
+            end
         end)
     end
 }
@@ -462,6 +477,56 @@ if existing then existing:Destroy() end
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "JanBlox Gui Pro Version"; screenGui.ResetOnSpawn = false; screenGui.DisplayOrder = 999; screenGui.Parent = playerGui
 
+-- MENU ACCESS CONTROLS (Initially Hidden due to NoticeFrame logic constraints)
+local toggleMenuBtn = Instance.new("TextButton")
+toggleMenuBtn.Size = UDim2.new(0, 40, 0, 40); toggleMenuBtn.Position = UDim2.new(0, 10, 0, 10); toggleMenuBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+toggleMenuBtn.TextColor3 = Color3.fromRGB(100, 200, 255); toggleMenuBtn.Font = Enum.Font.GothamBold; toggleMenuBtn.TextSize = 16; toggleMenuBtn.Text = "[X]"; toggleMenuBtn.BorderSizePixel = 0; toggleMenuBtn.ZIndex = 999; toggleMenuBtn.Visible = false; toggleMenuBtn.Parent = screenGui
+
+local feedbackLeftBtn = Instance.new("TextButton")
+feedbackLeftBtn.Size = UDim2.new(0, 75, 0, 40); feedbackLeftBtn.Position = UDim2.new(0, 55, 0, 10); feedbackLeftBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 40)
+feedbackLeftBtn.TextColor3 = Color3.fromRGB(255, 150, 255); feedbackLeftBtn.Font = Enum.Font.GothamBold; feedbackLeftBtn.TextSize = 11; feedbackLeftBtn.Text = "Feedback Chat"; feedbackLeftBtn.BorderSizePixel = 0; feedbackLeftBtn.ZIndex = 999; feedbackLeftBtn.Visible = false; feedbackLeftBtn.Parent = screenGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 380, 0, 780); frame.Position = UDim2.new(0, 10, 0, 60); frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30); frame.BorderSizePixel = 0; frame.ZIndex = 10; frame.Visible = true; frame.Parent = screenGui
+
+local topBar = Instance.new("Frame")
+topBar.Size = UDim2.new(1, 0, 0, 35); topBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20); topBar.BorderSizePixel = 0; topBar.ZIndex = 11; topBar.Parent = frame
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 1, 0); title.BackgroundTransparency = 1; title.Text = "JanBlox Gui Pro Version"; title.TextColor3 = Color3.new(1,1,1); title.Font = Enum.Font.GothamBold; title.TextSize = 13; title.ZIndex = 12; title.Parent = topBar
+
+-- DRAGGING ENGINE CORES
+local dragging, dragInput, dragStart, startPos
+topBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true; dragStart = input.Position; startPos = frame.Position
+        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+    end
+end)
+topBar.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+local function handleMenuVisibilityToggle()
+    frame.Visible = not frame.Visible
+    toggleMenuBtn.Text = frame.Visible and "[X]" or "[O]"
+end
+
+toggleMenuBtn.MouseButton1Click:Connect(handleMenuVisibilityToggle)
+
+-- KEYBOARD ATTACHMENT LISTENER (K / L keys master registration)
+UserInputService.InputBegan:Connect(function(input, processed)
+    if not processed then
+        if input.KeyCode == Enum.KeyCode.K then
+            handleMenuVisibilityToggle()
+        end
+    end
+end)
+
 -- NOTICE OVERLAY FRAME
 local noticeFrame = Instance.new("Frame")
 noticeFrame.Size = UDim2.new(0.85, 0, 0, 260); noticeFrame.Position = UDim2.new(0.075, 0, 0.5, -130); noticeFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
@@ -486,47 +551,20 @@ skipBtn.TextColor3 = Color3.fromRGB(255, 255, 255); skipBtn.Font = Enum.Font.Got
 local btnCorner = Instance.new("UICorner")
 btnCorner.CornerRadius = UDim.new(0, 6); btnCorner.Parent = skipBtn
 
+local function cleanNoticeFrame()
+    if noticeFrame and noticeFrame.Parent then 
+        noticeFrame:Destroy() 
+    end
+    toggleMenuBtn.Visible = true
+    feedbackLeftBtn.Visible = true
+end
+
 task.spawn(function()
-    task.delay(30, function() if noticeFrame and noticeFrame.Parent then noticeFrame:Destroy() end end)
+    task.delay(30, cleanNoticeFrame)
     for i = 5, 1, -1 do skipBtn.Text = "OK ("..i..")" task.wait(1) end
     skipBtn.Text = "OK Daddy~"
-    skipBtn.MouseButton1Click:Connect(function() noticeFrame:Destroy() end)
+    skipBtn.MouseButton1Click:Connect(cleanNoticeFrame)
 end)
-
--- MAIN CONTAINER PANELS (Height expanded from 700 to 780 to allow dropdown items space)
-local toggleMenuBtn = Instance.new("TextButton")
-toggleMenuBtn.Size = UDim2.new(0, 40, 0, 40); toggleMenuBtn.Position = UDim2.new(0, 10, 0, 10); toggleMenuBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-toggleMenuBtn.TextColor3 = Color3.fromRGB(100, 200, 255); toggleMenuBtn.Font = Enum.Font.GothamBold; toggleMenuBtn.TextSize = 16; toggleMenuBtn.Text = "[X]"; toggleMenuBtn.BorderSizePixel = 0; toggleMenuBtn.ZIndex = 999; toggleMenuBtn.Parent = screenGui
-
-local feedbackLeftBtn = Instance.new("TextButton")
-feedbackLeftBtn.Size = UDim2.new(0, 75, 0, 40); feedbackLeftBtn.Position = UDim2.new(0, 55, 0, 10); feedbackLeftBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 40)
-feedbackLeftBtn.TextColor3 = Color3.fromRGB(255, 150, 255); feedbackLeftBtn.Font = Enum.Font.GothamBold; feedbackLeftBtn.TextSize = 11; feedbackLeftBtn.Text = "Feedback Chat"; feedbackLeftBtn.BorderSizePixel = 0; feedbackLeftBtn.ZIndex = 999; feedbackLeftBtn.Parent = screenGui
-
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 380, 0, 780); frame.Position = UDim2.new(0, 10, 0, 60); frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30); frame.BorderSizePixel = 0; frame.ZIndex = 10; frame.Visible = true; frame.Parent = screenGui
-
-local topBar = Instance.new("Frame")
-topBar.Size = UDim2.new(1, 0, 0, 35); topBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20); topBar.BorderSizePixel = 0; topBar.ZIndex = 11; topBar.Parent = frame
-
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 1, 0); title.BackgroundTransparency = 1; title.Text = "JanBlox Gui Pro Version"; title.TextColor3 = Color3.new(1,1,1); title.Font = Enum.Font.GothamBold; title.TextSize = 13; title.ZIndex = 12; title.Parent = topBar
-
-local dragging, dragInput, dragStart, startPos
-topBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true; dragStart = input.Position; startPos = frame.Position
-        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
-    end
-end)
-topBar.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-
-toggleMenuBtn.MouseButton1Click:Connect(function() frame.Visible = not frame.Visible; toggleMenuBtn.Text = frame.Visible and "[X]" or "[O]" end)
 
 local chatFrame = Instance.new("Frame")
 chatFrame.Size = UDim2.new(0, 300, 0, 350); chatFrame.Position = UDim2.new(0, 280, 0, 60); chatFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15); chatFrame.BorderSizePixel = 0; chatFrame.Visible = false; chatFrame.ZIndex = 10; chatFrame.Parent = screenGui
@@ -675,7 +713,6 @@ local trMin, trPls, trDisp = bld.createTrackerRow("Hitbox Transparency", string.
 
 bld.createHeader("Player Configuration", Color3.fromRGB(150, 255, 150), 11)
 
--- Determine rig type context for the button label name configuration
 local function getRigTypeLabel()
     local char = LocalPlayer.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -686,7 +723,7 @@ local function getRigTypeLabel()
 end
 
 local poseToggleButton = bld.createButton(getRigTypeLabel(), 12)
-local mobileJumpBtn = bld.createButton("Mobile Auto Jump: ON", 13) -- Added Auto-Jump Button
+local mobileJumpBtn = bld.createButton("Mobile Auto Jump: ON", 13)
 local dayNightBtn = bld.createButton("Day/Night: NORMAL", 14)
 local fullBrightBtn = bld.createButton("Loop FullBright: OFF", 15)
 local graphicsBtn = bld.createButton("Graphics: Level 10", 16)
@@ -698,16 +735,23 @@ flingInput.Size = UDim2.new(1, -70, 1, 0); flingInput.BackgroundColor3 = Color3.
 flingInput.Font = Enum.Font.Gotham; flingInput.TextSize = 12; flingInput.Text = ""; flingInput.PlaceholderText = "Target Name..."; flingInput.ZIndex = 14; flingInput.Parent = flingContainer
 local flingBtn = bld.createButton("Fling", 2, flingContainer); flingBtn.Size = UDim2.new(0, 65, 1, 0); flingBtn.Position = UDim2.new(1, -65, 0, 0); flingBtn.ZIndex = 14
 
-local wsMin, wsPls, wsDisp = bld.createTrackerRow("LocalPlayer Walkspeed", tostring(_G.CustomWalkSpeed), 18)
-local jpMin, jpPls, jpDisp = bld.createTrackerRow("LocalPlayer Jumppower", tostring(_G.CustomJumpPower), 19)
-local playerResetBtn = bld.createButton("Reset Movement Attributes", 20)
+-- WALK SPEED & JUMP POWER RE-RIG WITH INDEPENDENT STATUS LOCK TOGGLES
+local wsToggleBtn = bld.createButton("Master Walkspeed State: OFF", 18)
+local wsMin, wsPls, wsDisp = bld.createTrackerRow("LocalPlayer Walkspeed", tostring(_G.CustomWalkSpeed), 19)
+
+local jpToggleBtn = bld.createButton("Master Jumppower State: OFF", 20)
+local jpMin, jpPls, jpDisp = bld.createTrackerRow("LocalPlayer Jumppower", tostring(_G.CustomJumpPower), 21)
+
+local playerResetBtn = bld.createButton("Reset Movement Attributes", 22)
 playerResetBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 40)
 
 -- Live Teleport Submenu Rig
-bld.createHeader("Navigation Framework", Color3.fromRGB(255, 255, 100), 21)
-local teleportDropdownBtn = bld.createButton("Teleport Controls v", 22)
+bld.createHeader("Navigation Framework", Color3.fromRGB(255, 255, 100), 23)
+local teleportDropdownBtn = bld.createButton("Teleport Controls v", 24)
+
+-- SUBMENU CONTROLS USING NESTED AUTOMATIC LIST SYSTEM TO PREVENT BUTTONS OVERLAPPING
 local teleportDropFrame = Instance.new("Frame")
-teleportDropFrame.Size = UDim2.new(1, 0, 0, 0); teleportDropFrame.BackgroundTransparency = 1; teleportDropFrame.LayoutOrder = 23
+teleportDropFrame.Size = UDim2.new(1, 0, 0, 0); teleportDropFrame.BackgroundTransparency = 1; teleportDropFrame.LayoutOrder = 25
 teleportDropFrame.Visible = false; teleportDropFrame.ZIndex = 13; teleportDropFrame.Parent = bld.scrollingFrame
 local teleportDropLayout = Instance.new("UIListLayout")
 teleportDropLayout.Padding = UDim.new(0, 4); teleportDropLayout.SortOrder = Enum.SortOrder.LayoutOrder; teleportDropLayout.Parent = teleportDropFrame
@@ -718,14 +762,14 @@ teleportDropLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(funct
     end
 end)
 
-bld.createHeader("ESP Configuration", Color3.fromRGB(255, 100, 100), 24)
-local espToggleButton = bld.createButton("ESP Master Switch: OFF", 25)
-local npcEspToggleButton = bld.createButton("NPC ESP Switch: OFF", 26)
-local teamCheckButton = bld.createButton("ESP Team Check: OFF", 27)
+bld.createHeader("ESP Configuration", Color3.fromRGB(255, 100, 100), 26)
+local espToggleButton = bld.createButton("ESP Master Switch: OFF", 27)
+local npcEspToggleButton = bld.createButton("NPC ESP Switch: OFF", 28)
+local teamCheckButton = bld.createButton("ESP Team Check: OFF", 29)
 
-local settingDropdownBtn = bld.createButton("Name and Health Settings v", 28)
+local settingDropdownBtn = bld.createButton("Name and Health Settings v", 30)
 local settingDropFrame = Instance.new("Frame")
-settingDropFrame.Size = UDim2.new(1, 0, 0, 0); settingDropFrame.BackgroundTransparency = 1; settingDropFrame.LayoutOrder = 29; settingDropFrame.Visible = false; settingDropFrame.ZIndex = 13; settingDropFrame.Parent = bld.scrollingFrame
+settingDropFrame.Size = UDim2.new(1, 0, 0, 0); settingDropFrame.BackgroundTransparency = 1; settingDropFrame.LayoutOrder = 31; settingDropFrame.Visible = false; settingDropFrame.ZIndex = 13; settingDropFrame.Parent = bld.scrollingFrame
 
 local settingDropLayout = Instance.new("UIListLayout")
 settingDropLayout.Padding = UDim.new(0, 4); settingDropLayout.SortOrder = Enum.SortOrder.LayoutOrder; settingDropLayout.Parent = settingDropFrame
@@ -739,9 +783,9 @@ end)
 local showNameButton = bld.createButton("Show Name: ON", 1, settingDropFrame)
 local showHealthButton = bld.createButton("Show Health: ON", 2, settingDropFrame)
 
-local teamDropdownBtn = bld.createButton("Team Configuration v", 30)
+local teamDropdownBtn = bld.createButton("Team Configuration v", 32)
 local teamDropFrame = Instance.new("Frame")
-teamDropFrame.Size = UDim2.new(1, 0, 0, 0); teamDropFrame.BackgroundTransparency = 1; teamDropFrame.LayoutOrder = 31; teamDropFrame.Visible = false; teamDropFrame.ZIndex = 13; teamDropFrame.Parent = bld.scrollingFrame
+teamDropFrame.Size = UDim2.new(1, 0, 0, 0); teamDropFrame.BackgroundTransparency = 1; teamDropFrame.LayoutOrder = 33; teamDropFrame.Visible = false; teamDropFrame.ZIndex = 13; teamDropFrame.Parent = bld.scrollingFrame
 
 local teamDropLayout = Instance.new("UIListLayout")
 teamDropLayout.Padding = UDim.new(0, 4); teamDropLayout.SortOrder = Enum.SortOrder.LayoutOrder; teamDropLayout.Parent = teamDropFrame
@@ -818,7 +862,6 @@ settingDropdownBtn.MouseButton1Click:Connect(function()
     settingDropdownBtn.Text = settingDropFrame.Visible and "Name and Health Settings ^" or "Name and Health Settings v"
 end)
 
--- Structural logic update function to flip Hitbox states cleanly
 local function handleHitboxToggle()
     _G.Disabled = not _G.Disabled
     toggleButton.Text = "Toggle Hitbox: " .. (_G.Disabled and "ON" or "OFF")
@@ -827,7 +870,6 @@ end
 
 toggleButton.MouseButton1Click:Connect(handleHitboxToggle)
 
--- L Keybind Listener for toggling hitboxes
 UserInputService.InputBegan:Connect(function(input, processed)
     if not processed and input.KeyCode == Enum.KeyCode.L then
         handleHitboxToggle()
@@ -910,19 +952,12 @@ end)
 
 poseToggleButton.MouseButton1Click:Connect(function()
     _G.LayModEnabled = not _G.LayModEnabled
-    
     local char = LocalPlayer.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     local prefix = "Lay Down"
-    if hum and hum.RigType == Enum.HumanoidRigType.R6 then
-        prefix = "Hipheight"
-    end
-    
+    if hum and hum.RigType == Enum.HumanoidRigType.R6 then prefix = "Hipheight" end
     poseToggleButton.Text = prefix .. " Switch: " .. (_G.LayModEnabled and "ON" or "OFF")
-    
-    if not _G.LayModEnabled and hum then
-        hum.HipHeight = (hum.RigType == Enum.HumanoidRigType.R15) and 0 or 0
-    end
+    if not _G.LayModEnabled and hum then hum.HipHeight = 0 end
 end)
 
 mobileJumpBtn.MouseButton1Click:Connect(function()
@@ -930,41 +965,56 @@ mobileJumpBtn.MouseButton1Click:Connect(function()
     mobileJumpBtn.Text = "Mobile Auto Jump: " .. (_G.DisableAutoJump and "OFF" or "ON")
 end)
 
-wsMin.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomWalkSpeed = math.max(0, _G.CustomWalkSpeed - 2); wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
-wsPls.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomWalkSpeed = _G.CustomWalkSpeed + 2; wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
-jpMin.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomJumpPower = math.max(0, _G.CustomJumpPower - 10); jpDisp.Text = tostring(_G.CustomJumpPower) end)
-jpPls.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomJumpPower = _G.CustomJumpPower + 10; jpDisp.Text = tostring(_G.CustomJumpPower) end)
+-- INDEPENDENT MASTER STATE SWITCHES FOR WALKSPEED / JUMPPOWER
+wsToggleBtn.MouseButton1Click:Connect(function()
+    _G.WalkSpeedToggle = not _G.WalkSpeedToggle
+    _G.PlayerModEnabled = (_G.WalkSpeedToggle or _G.JumpPowerToggle)
+    wsToggleBtn.Text = "Master Walkspeed State: " .. (_G.WalkSpeedToggle and "ON" or "OFF")
+    if not _G.WalkSpeedToggle then
+        local char = LocalPlayer.Character; local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = 16 end
+    end
+end)
+
+jpToggleBtn.MouseButton1Click:Connect(function()
+    _G.JumpPowerToggle = not _G.JumpPowerToggle
+    _G.PlayerModEnabled = (_G.WalkSpeedToggle or _G.JumpPowerToggle)
+    jpToggleBtn.Text = "Master Jumppower State: " .. (_G.JumpPowerToggle and "ON" or "OFF")
+    if not _G.JumpPowerToggle then
+        local char = LocalPlayer.Character; local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then hum.JumpPower = 50 end
+    end
+end)
+
+-- GRANULAR SINGLE-STUD INCREMENT ADJUSTER (-1 / +1)
+wsMin.MouseButton1Click:Connect(function() _G.CustomWalkSpeed = math.max(0, _G.CustomWalkSpeed - 1); wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
+wsPls.MouseButton1Click:Connect(function() _G.CustomWalkSpeed = _G.CustomWalkSpeed + 1; wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
+
+jpMin.MouseButton1Click:Connect(function() _G.CustomJumpPower = math.max(0, _G.CustomJumpPower - 10); jpDisp.Text = tostring(_G.CustomJumpPower) end)
+jpPls.MouseButton1Click:Connect(function() _G.CustomJumpPower = _G.CustomJumpPower + 10; jpDisp.Text = tostring(_G.CustomJumpPower) end)
 
 playerResetBtn.MouseButton1Click:Connect(function()
     _G.PlayerModEnabled = false
+    _G.WalkSpeedToggle = false
+    _G.JumpPowerToggle = false
     _G.CustomWalkSpeed = 16
     _G.CustomJumpPower = 50
     wsDisp.Text = tostring(_G.CustomWalkSpeed)
     jpDisp.Text = tostring(_G.CustomJumpPower)
+    wsToggleBtn.Text = "Master Walkspeed State: OFF"
+    jpToggleBtn.Text = "Master Jumppower State: OFF"
 
-    local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.WalkSpeed = 16
-        hum.UseJumpPower = true
-        hum.JumpPower = 50
-    end
+    local char = LocalPlayer.Character; local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then hum.WalkSpeed = 16; hum.UseJumpPower = true; hum.JumpPower = 50 end
 end)
 
 flingBtn.MouseButton1Click:Connect(function() flingEngine.fling(flingInput.Text) end)
 
 local function updateTeleportMenu()
     if not teleportDropFrame.Visible then return end
+    for _, c in ipairs(teleportDropFrame:GetChildren()) do if not c:IsA("UIListLayout") then c:Destroy() end end
+    local grouped = {}; local orderCount = 1
     
-    -- Clear current context mapping inside drop frame
-    for _, c in ipairs(teleportDropFrame:GetChildren()) do 
-        if not c:IsA("UIListLayout") then c:Destroy() end 
-    end
-    
-    local grouped = {}
-    local orderCount = 1
-    
-    -- Group player data elements cleanly by internal Team alignments
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             local teamName = p.Team and p.Team.Name or "Neutral"
@@ -973,18 +1023,10 @@ local function updateTeleportMenu()
         end
     end
     
-    -- Generate TextLabels dynamically for titles alongside clickable navigation buttons
     for teamName, players in pairs(grouped) do
         local teamHeader = Instance.new("TextLabel")
-        teamHeader.Size = UDim2.new(1, 0, 0, 24)
-        teamHeader.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-        teamHeader.TextColor3 = Color3.fromRGB(255, 255, 100)
-        teamHeader.Font = Enum.Font.GothamBold
-        teamHeader.TextSize = 11
-        teamHeader.Text = "Team: " .. teamName
-        teamHeader.LayoutOrder = orderCount
-        teamHeader.ZIndex = 14
-        teamHeader.Parent = teleportDropFrame
+        teamHeader.Size = UDim2.new(1, 0, 0, 24); teamHeader.BackgroundColor3 = Color3.fromRGB(45, 45, 45); teamHeader.TextColor3 = Color3.fromRGB(255, 255, 100)
+        teamHeader.Font = Enum.Font.GothamBold; teamHeader.TextSize = 11; teamHeader.Text = "Team: " .. teamName; teamHeader.LayoutOrder = orderCount; teamHeader.ZIndex = 14; teamHeader.Parent = teleportDropFrame
         orderCount = orderCount + 1
         
         for _, p in ipairs(players) do
@@ -1011,21 +1053,13 @@ RunService.RenderStepped:Connect(function()
         local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
         hum.UseJumpPower = true
         
-        -- Safe configuration lock for disabling mobile auto-jumping over obstacles
-        if _G.DisableAutoJump then
-            hum.AutoJumpEnabled = false
-        end
-        
-        if _G.PlayerModEnabled then
-            hum.WalkSpeed = _G.CustomWalkSpeed
-            hum.JumpPower = _G.CustomJumpPower
-        end
-        if _G.LayModEnabled then
-            hum.HipHeight = -2
-        end
+        if _G.DisableAutoJump then hum.AutoJumpEnabled = false end
+        if _G.WalkSpeedToggle then hum.WalkSpeed = _G.CustomWalkSpeed end
+        if _G.JumpPowerToggle then hum.JumpPower = _G.CustomJumpPower end
+        if _G.LayModEnabled then hum.HipHeight = -2 end
     end
 
-    if _G.PlayerModEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+    if _G.WalkSpeedToggle and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         local root = LocalPlayer.Character.HumanoidRootPart
         local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
         if hum.MoveDirection.Magnitude > 0 then
@@ -1089,32 +1123,20 @@ local function connectPlayerSignals(p)
     local function setupChar(char)
         graphics.removeESPHighlight(p)
         graphics.removeESPLabel(p)
-        
         local head = char:WaitForChild("Head", 5)
-        if head then
-            task.wait(0.05)
-            globalESPUpdate()
-        end
+        if head then task.wait(0.05) globalESPUpdate() end
     end
-
     if p.Character then task.spawn(setupChar, p.Character) end
     p.CharacterAdded:Connect(setupChar)
-    p:GetPropertyChangedSignal("Team"):Connect(function() task.wait(0.05) globalESPUpdate() end)
+    p:GetPropertyChangedSignal("Team"):Connect(function() task.wait(0.05); globalESPUpdate() end)
 end
 
-for _, p in ipairs(Players:GetPlayers()) do
-    if p ~= LocalPlayer then
-        connectPlayerSignals(p)
-    end
-end
-
+for _, p in ipairs(Players:GetPlayers()) do if p ~= LocalPlayer then connectPlayerSignals(p) end end
 Players.PlayerAdded:Connect(connectPlayerSignals)
 
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.spawn(function()
         local hum = char:WaitForChild("Humanoid", 5)
-        if hum then
-            poseToggleButton.Text = getRigTypeLabel()
-        end
+        if hum then poseToggleButton.Text = getRigTypeLabel() end
     end)
 end)
