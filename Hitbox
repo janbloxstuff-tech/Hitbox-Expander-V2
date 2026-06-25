@@ -1170,7 +1170,6 @@ local function updateTeleportDistances()
 	end
 end
 
--- 3. UPDATE YOUR DROPDOWN CLICK TO REBUILD ON DEMAND
 teleportDropdownBtn.MouseButton1Click:Connect(function()
 	teleportDropFrame.Visible = not teleportDropFrame.Visible
 	teleportDropdownBtn.Text = teleportDropFrame.Visible and "Teleport Controls ^" or "Teleport Controls v"
@@ -1181,12 +1180,11 @@ teleportDropdownBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
--- 4. CONNECT EXTRA CLEANUP SIGNALS SO IT REBUILDS IF SOMEONE LEAVES OR JOINS
 Players.PlayerAdded:Connect(function() task.wait(0.5); rebuildTeleportMenu() end)
 Players.PlayerRemoving:Connect(function() task.wait(0.1); rebuildTeleportMenu() end)
 
 RunService.RenderStepped:Connect(function()
-	rebuildTeleportMenu()
+	updateTeleportDistances() -- CHANGED HERE: Only updates text distances, doesn't delete buttons!
 	globalESPUpdate()
 
 	if _G.LoopFullBright then Lighting.Ambient = Color3.fromRGB(255, 255, 255); Lighting.Brightness = 2; Lighting.ClockTime = 14 end
@@ -1224,6 +1222,31 @@ RunService.RenderStepped:Connect(function()
 		end
 	else
 		mech.restoreAll()
+	end
+
+	if _G.NPCHitbox or _G.NPCESPEnabled then
+		for npc, _ in pairs(trackedNPCs) do
+			if npc and npc.Parent and isNPCModel(npc) then
+				local hum = npc:FindFirstChildOfClass("Humanoid")
+				if hum and hum.Health > 0 then
+					if _G.NPCHitbox then pipeline.applyToNPC(npc) end
+					if _G.NPCESPEnabled then
+						if not npcLabels[npc] then graphics.createNPCLabel(npc) end
+					else
+						graphics.removeNPCLabel(npc)
+					end
+				else
+					mech.restoreNPC(npc)
+					graphics.removeNPCLabel(npc)
+				end
+			else
+				untrackNPC(npc)
+			end
+		end
+	else
+		mech.restoreAllNPCs()
+		for npc, _ in pairs(npcLabels) do graphics.removeNPCLabel(npc) end
+		for npc, _ in pairs(trackedNPCs) do untrackNPC(npc) end
 	end
 
 	if _G.NPCHitbox or _G.NPCESPEnabled then
