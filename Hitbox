@@ -16,6 +16,7 @@ _G.TeamCheck = false
 _G.CheckForcefield = false 
 _G.LayModEnabled = false 
 _G.FlingTarget = ""
+_G.DisableAutoJump = false -- Mobile Auto-Jump state modifier
 
 -- Player Config Settings & Bypass Variables
 _G.CustomWalkSpeed = 16
@@ -313,7 +314,6 @@ _G.FlingEngine = {
         local targetPlayer = nil
         local search = string.lower(targetName)
         
-        -- Use string.find to allow partial matching
         for _, p in ipairs(utils.Players:GetPlayers()) do
             if string.find(string.lower(p.Name), search) or string.find(string.lower(p.DisplayName), search) then
                 targetPlayer = p
@@ -493,7 +493,7 @@ task.spawn(function()
     skipBtn.MouseButton1Click:Connect(function() noticeFrame:Destroy() end)
 end)
 
--- MAIN CONTAINER PANELS
+-- MAIN CONTAINER PANELS (Height expanded from 700 to 780 to allow dropdown items space)
 local toggleMenuBtn = Instance.new("TextButton")
 toggleMenuBtn.Size = UDim2.new(0, 40, 0, 40); toggleMenuBtn.Position = UDim2.new(0, 10, 0, 10); toggleMenuBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 toggleMenuBtn.TextColor3 = Color3.fromRGB(100, 200, 255); toggleMenuBtn.Font = Enum.Font.GothamBold; toggleMenuBtn.TextSize = 16; toggleMenuBtn.Text = "[X]"; toggleMenuBtn.BorderSizePixel = 0; toggleMenuBtn.ZIndex = 999; toggleMenuBtn.Parent = screenGui
@@ -503,7 +503,7 @@ feedbackLeftBtn.Size = UDim2.new(0, 75, 0, 40); feedbackLeftBtn.Position = UDim2
 feedbackLeftBtn.TextColor3 = Color3.fromRGB(255, 150, 255); feedbackLeftBtn.Font = Enum.Font.GothamBold; feedbackLeftBtn.TextSize = 11; feedbackLeftBtn.Text = "Feedback Chat"; feedbackLeftBtn.BorderSizePixel = 0; feedbackLeftBtn.ZIndex = 999; feedbackLeftBtn.Parent = screenGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 380, 0, 700); frame.Position = UDim2.new(0, 10, 0, 60); frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30); frame.BorderSizePixel = 0; frame.ZIndex = 10; frame.Visible = true; frame.Parent = screenGui
+frame.Size = UDim2.new(0, 380, 0, 780); frame.Position = UDim2.new(0, 10, 0, 60); frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30); frame.BorderSizePixel = 0; frame.ZIndex = 10; frame.Visible = true; frame.Parent = screenGui
 
 local topBar = Instance.new("Frame")
 topBar.Size = UDim2.new(1, 0, 0, 35); topBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20); topBar.BorderSizePixel = 0; topBar.ZIndex = 11; topBar.Parent = frame
@@ -604,7 +604,7 @@ local uiList = Instance.new("UIListLayout")
 uiList.Padding = UDim.new(0, 6); uiList.SortOrder = Enum.SortOrder.LayoutOrder; uiList.Parent = scrollingFrame
 
 uiList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, uiList.AbsoluteContentSize.Y + 20)
+    scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, uiList.AbsoluteContentSize.Y + 30)
 end)
 
 local function createHeader(text, color, order)
@@ -641,56 +641,6 @@ local function createTrackerRow(labelTxt, valTxt, order, parentFrame)
     disp.TextColor3 = Color3.new(1,1,1); disp.Font = Enum.Font.GothamBold; disp.TextSize = 14; disp.Text = valTxt; disp.ZIndex = 15; disp.Parent = row
     local plus = createButton("+", 3, row); plus.Size = UDim2.new(0, 45, 1, 0); plus.Position = UDim2.new(1, -50, 0, 0); plus.ZIndex = 15
     return minus, plus, disp
-end
-
-local function updateTeleportMenu()
-    if not teleportDropFrame.Visible then return end
-    
-    -- Clear current children
-    for _, c in ipairs(teleportDropFrame:GetChildren()) do 
-        if not c:IsA("UIListLayout") then c:Destroy() end 
-    end
-    
-    local grouped = {}
-    local orderCount = 1
-    
-    -- Group players by team
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local teamName = p.Team and p.Team.Name or "Neutral"
-            if not grouped[teamName] then grouped[teamName] = {} end
-            table.insert(grouped[teamName], p)
-        end
-    end
-    
-    -- Build the headers and buttons
-    for teamName, players in pairs(grouped) do
-        -- 1. Create Header manually to ensure it parents to the Dropdown Frame
-        local header = Instance.new("TextLabel")
-        header.Name = "TeamHeader_" .. teamName
-        header.Size = UDim2.new(1, 0, 0, 24)
-        header.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        header.TextColor3 = Color3.fromRGB(255, 255, 100)
-        header.Font = Enum.Font.GothamBold
-        header.TextSize = 12
-        header.Text = "Team: " .. teamName
-        header.LayoutOrder = orderCount
-        header.ZIndex = 15
-        header.Parent = teleportDropFrame
-        orderCount = orderCount + 1
-        
-        -- 2. Create Player Buttons
-        for _, p in ipairs(players) do
-            local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude)
-            local btn = bld.createButton(p.DisplayName .. " [" .. dist .. " Studs]", orderCount, teleportDropFrame)
-            btn.MouseButton1Click:Connect(function()
-                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                    LocalPlayer.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 0)
-                end
-            end)
-            orderCount = orderCount + 1
-        end
-    end
 end
 
 _G.UIBuilders = { createHeader = createHeader, createButton = createButton, createTrackerRow = createTrackerRow, scrollingFrame = scrollingFrame, frame = frame }
@@ -736,7 +686,7 @@ local function getRigTypeLabel()
 end
 
 local poseToggleButton = bld.createButton(getRigTypeLabel(), 12)
-local freezeAnimBtn = bld.createButton("Freeze Animation: OFF", 13)
+local mobileJumpBtn = bld.createButton("Mobile Auto Jump: ON", 13) -- Added Auto-Jump Button
 local dayNightBtn = bld.createButton("Day/Night: NORMAL", 14)
 local fullBrightBtn = bld.createButton("Loop FullBright: OFF", 15)
 local graphicsBtn = bld.createButton("Graphics: Level 10", 16)
@@ -868,10 +818,20 @@ settingDropdownBtn.MouseButton1Click:Connect(function()
     settingDropdownBtn.Text = settingDropFrame.Visible and "Name and Health Settings ^" or "Name and Health Settings v"
 end)
 
-toggleButton.MouseButton1Click:Connect(function()
+-- Structural logic update function to flip Hitbox states cleanly
+local function handleHitboxToggle()
     _G.Disabled = not _G.Disabled
     toggleButton.Text = "Toggle Hitbox: " .. (_G.Disabled and "ON" or "OFF")
     if not _G.Disabled then mech.restoreAll() mech.restoreAllNPCs() end
+end
+
+toggleButton.MouseButton1Click:Connect(handleHitboxToggle)
+
+-- L Keybind Listener for toggling hitboxes
+UserInputService.InputBegan:Connect(function(input, processed)
+    if not processed and input.KeyCode == Enum.KeyCode.L then
+        handleHitboxToggle()
+    end
 end)
 
 forcefieldCheckButton.MouseButton1Click:Connect(function()
@@ -965,6 +925,11 @@ poseToggleButton.MouseButton1Click:Connect(function()
     end
 end)
 
+mobileJumpBtn.MouseButton1Click:Connect(function()
+    _G.DisableAutoJump = not _G.DisableAutoJump
+    mobileJumpBtn.Text = "Mobile Auto Jump: " .. (_G.DisableAutoJump and "OFF" or "ON")
+end)
+
 wsMin.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomWalkSpeed = math.max(0, _G.CustomWalkSpeed - 2); wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
 wsPls.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomWalkSpeed = _G.CustomWalkSpeed + 2; wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
 jpMin.MouseButton1Click:Connect(function() _G.PlayerModEnabled = true; _G.CustomJumpPower = math.max(0, _G.CustomJumpPower - 10); jpDisp.Text = tostring(_G.CustomJumpPower) end)
@@ -988,29 +953,51 @@ end)
 
 flingBtn.MouseButton1Click:Connect(function() flingEngine.fling(flingInput.Text) end)
 
-local tpButtons = {}
 local function updateTeleportMenu()
     if not teleportDropFrame.Visible then return end
+    
+    -- Clear current context mapping inside drop frame
+    for _, c in ipairs(teleportDropFrame:GetChildren()) do 
+        if not c:IsA("UIListLayout") then c:Destroy() end 
+    end
+    
+    local grouped = {}
+    local orderCount = 1
+    
+    -- Group player data elements cleanly by internal Team alignments
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude)
-            if not tpButtons[p] then
-                local b = bld.createButton("", 1, teleportDropFrame)
-                tpButtons[p] = b
-                b.ZIndex = 15
-                b.MouseButton1Click:Connect(function()
-                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                        LocalPlayer.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 0)
-                    end
-                end)
-            end
-            tpButtons[p].Text = p.DisplayName .. " [" .. dist .. " Studs]"
-        elseif tpButtons[p] then
-            tpButtons[p]:Destroy()
-            tpButtons[p] = nil
+            local teamName = p.Team and p.Team.Name or "Neutral"
+            if not grouped[teamName] then grouped[teamName] = {} end
+            table.insert(grouped[teamName], p)
         end
     end
-    for p, btn in pairs(tpButtons) do if not Players:FindFirstChild(p.Name) then btn:Destroy(); tpButtons[p] = nil end end
+    
+    -- Generate TextLabels dynamically for titles alongside clickable navigation buttons
+    for teamName, players in pairs(grouped) do
+        local teamHeader = Instance.new("TextLabel")
+        teamHeader.Size = UDim2.new(1, 0, 0, 24)
+        teamHeader.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+        teamHeader.TextColor3 = Color3.fromRGB(255, 255, 100)
+        teamHeader.Font = Enum.Font.GothamBold
+        teamHeader.TextSize = 11
+        teamHeader.Text = "Team: " .. teamName
+        teamHeader.LayoutOrder = orderCount
+        teamHeader.ZIndex = 14
+        teamHeader.Parent = teleportDropFrame
+        orderCount = orderCount + 1
+        
+        for _, p in ipairs(players) do
+            local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude)
+            local btn = bld.createButton(p.DisplayName .. " [" .. dist .. " Studs]", orderCount, teleportDropFrame)
+            btn.MouseButton1Click:Connect(function()
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 0)
+                end
+            end)
+            orderCount = orderCount + 1
+        end
+    end
 end
 
 RunService.RenderStepped:Connect(function()
@@ -1023,6 +1010,12 @@ RunService.RenderStepped:Connect(function()
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
         hum.UseJumpPower = true
+        
+        -- Safe configuration lock for disabling mobile auto-jumping over obstacles
+        if _G.DisableAutoJump then
+            hum.AutoJumpEnabled = false
+        end
+        
         if _G.PlayerModEnabled then
             hum.WalkSpeed = _G.CustomWalkSpeed
             hum.JumpPower = _G.CustomJumpPower
@@ -1094,14 +1087,12 @@ end)
 
 local function connectPlayerSignals(p)
     local function setupChar(char)
-        -- Clear dirty memory references left over from their previous dead life cycle
         graphics.removeESPHighlight(p)
         graphics.removeESPLabel(p)
         
-        -- Enforce a clean pipeline draw the structural millisecond their head registers on spawn
         local head = char:WaitForChild("Head", 5)
         if head then
-            task.wait(0.05) -- Minor framework adjustment window
+            task.wait(0.05)
             globalESPUpdate()
         end
     end
@@ -1111,7 +1102,6 @@ local function connectPlayerSignals(p)
     p:GetPropertyChangedSignal("Team"):Connect(function() task.wait(0.05) globalESPUpdate() end)
 end
 
--- Initialize the tracking pipeline for every player in-game instantly
 for _, p in ipairs(Players:GetPlayers()) do
     if p ~= LocalPlayer then
         connectPlayerSignals(p)
