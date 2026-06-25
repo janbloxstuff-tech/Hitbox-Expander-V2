@@ -552,7 +552,7 @@ noticeLabel.TextColor3 = Color3.fromRGB(255, 200, 255); noticeLabel.Font = Enum.
 
 local localName = "User"
 pcall(function() localName = LocalPlayer.Name end)
-noticeLabel.Text = "Hello there " .. localName .. ",\nthank you for using my script and make sure to give me credit if you're making a video as well.\n\nAlso you can reply on the feedback to the GUI about what I should add next or if you found an issue!\n\nThank you for being a good boy :3 or a good girl :3\ Made by Zhu Yuan the Big Ass Bitch\n\Don't worry i like Ju fufu's thick thighs more. And Exploit well!"
+noticeLabel.Text = "Hello there " .. localName .. ",\nthank you for using my script and make sure to give me credit if you're making a video as well.\n\nAlso you can reply on the feedback to the GUI about what I should add next or if you found an issue!\n\nThank you for being a good boy :3 or a good girl :3\nMade by Zhu Yuan the Big Ass Bitch\n\nDon't worry i like Ju fufu's thick thighs more. And Exploit well!"
 
 local skipBtn = Instance.new("TextButton")
 skipBtn.Size = UDim2.new(0.5, 0, 0, 38); skipBtn.Position = UDim2.new(0.25, 0, 0.75, 0); skipBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
@@ -765,20 +765,36 @@ playerResetBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 40)
 
 -- Live Teleport Submenu Rig
 bld.createHeader("Navigation Framework", Color3.fromRGB(255, 255, 100), 24)
+
+-- FIX: Restructured LayoutOrder completely so dropdowns don't overlay each other
 local teleportDropdownBtn = bld.createButton("Teleport Controls v", 25)
-local jumpscareDropdownBtn = bld.createButton("Jumpscare Players v", 26)
+
+local teleportDropFrame = Instance.new("Frame")
+teleportDropFrame.Size = UDim2.new(1, 0, 0, 0); teleportDropFrame.BackgroundTransparency = 1; teleportDropFrame.LayoutOrder = 26
+teleportDropFrame.Visible = false; teleportDropFrame.ZIndex = 13; teleportDropFrame.Parent = bld.scrollingFrame
+local teleportDropLayout = Instance.new("UIListLayout")
+teleportDropLayout.Padding = UDim.new(0, 4); teleportDropLayout.SortOrder = Enum.SortOrder.LayoutOrder; teleportDropLayout.Parent = teleportDropFrame
+
+local jumpscareDropdownBtn = bld.createButton("Jumpscare Players v", 27)
 
 local jumpscareDropFrame = Instance.new("Frame")
 jumpscareDropFrame.Size = UDim2.new(1, 0, 0, 0)
 jumpscareDropFrame.BackgroundTransparency = 1
-jumpscareDropFrame.LayoutOrder = 27
+jumpscareDropFrame.LayoutOrder = 28
 jumpscareDropFrame.Visible = false
+jumpscareDropFrame.ZIndex = 13
 jumpscareDropFrame.Parent = bld.scrollingFrame
 
 local jumpscareLayout = Instance.new("UIListLayout")
 jumpscareLayout.Padding = UDim.new(0, 4)
 jumpscareLayout.SortOrder = Enum.SortOrder.LayoutOrder
 jumpscareLayout.Parent = jumpscareDropFrame
+
+teleportDropLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+	if teleportDropFrame.Visible then
+		teleportDropFrame.Size = UDim2.new(1, 0, 0, teleportDropLayout.AbsoluteContentSize.Y)
+	end
+end)
 
 jumpscareLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
 	if jumpscareDropFrame.Visible then
@@ -789,27 +805,15 @@ jumpscareLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function
 	end
 end)
 
--- SUBMENU CONTROLS USING NESTED AUTOMATIC LIST SYSTEM TO PREVENT BUTTONS OVERLAPPING
-local teleportDropFrame = Instance.new("Frame")
-teleportDropFrame.Size = UDim2.new(1, 0, 0, 0); teleportDropFrame.BackgroundTransparency = 1; teleportDropFrame.LayoutOrder = 26
-teleportDropFrame.Visible = false; teleportDropFrame.ZIndex = 13; teleportDropFrame.Parent = bld.scrollingFrame
-local teleportDropLayout = Instance.new("UIListLayout")
-teleportDropLayout.Padding = UDim.new(0, 4); teleportDropLayout.SortOrder = Enum.SortOrder.LayoutOrder; teleportDropLayout.Parent = teleportDropFrame
+-- Shifted remaining components down sequentially to maintain exact ordering layout
+bld.createHeader("ESP Configuration", Color3.fromRGB(255, 100, 100), 29)
+local espToggleButton = bld.createButton("ESP Master Switch: OFF", 30)
+local npcEspToggleButton = bld.createButton("NPC ESP Switch: OFF", 31)
+local teamCheckButton = bld.createButton("ESP Team Check: OFF", 32)
 
-teleportDropLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-	if teleportDropFrame.Visible then
-		teleportDropFrame.Size = UDim2.new(1, 0, 0, teleportDropLayout.AbsoluteContentSize.Y)
-	end
-end)
-
-bld.createHeader("ESP Configuration", Color3.fromRGB(255, 100, 100), 27)
-local espToggleButton = bld.createButton("ESP Master Switch: OFF", 28)
-local npcEspToggleButton = bld.createButton("NPC ESP Switch: OFF", 29)
-local teamCheckButton = bld.createButton("ESP Team Check: OFF", 30)
-
-local settingDropdownBtn = bld.createButton("Configure Side Settings  v", 31)
+local settingDropdownBtn = bld.createButton("Configure Side Settings  v", 33)
 local settingDropFrame = Instance.new("Frame")
-settingDropFrame.Size = UDim2.new(1, 0, 0, 0); settingDropFrame.BackgroundTransparency = 1; settingDropFrame.LayoutOrder = 32; settingDropFrame.Visible = false; settingDropFrame.ZIndex = 13; settingDropFrame.Parent = bld.scrollingFrame
+settingDropFrame.Size = UDim2.new(1, 0, 0, 0); settingDropFrame.BackgroundTransparency = 1; settingDropFrame.LayoutOrder = 34; settingDropFrame.Visible = false; settingDropFrame.ZIndex = 13; settingDropFrame.Parent = bld.scrollingFrame
 
 local settingDropLayout = Instance.new("UIListLayout")
 settingDropLayout.Padding = UDim.new(0, 4); settingDropLayout.SortOrder = Enum.SortOrder.LayoutOrder; settingDropLayout.Parent = settingDropFrame
@@ -822,16 +826,14 @@ end)
 
 local showNameButton = bld.createButton("Show Name: ON", 1, settingDropFrame)
 local showHealthButton = bld.createButton("Show Health: ON", 2, settingDropFrame)
-local xrayButton = bld.createButton("X-Ray: OFF", 3, settingDropFrame) -- Button converted to XRay
+local xrayButton = bld.createButton("X-Ray: OFF", 3, settingDropFrame)
 
 _G.XRayEnabled = false
-local xrayCache = {} -- Stores original transparency values
+local xrayCache = {} 
 
 local function applyXRay()
 	for _, obj in ipairs(workspace:GetDescendants()) do
-		-- Only affect static map geometry, walls, and structural models
 		if obj:IsA("BasePart") and not obj:IsDescendantOf(LocalPlayer.Character) and not game.Players:GetPlayerFromCharacter(obj.Parent) then
-			-- Don't overwrite the cache if it's already recorded
 			if not xrayCache[obj] then
 				xrayCache[obj] = obj.Transparency
 			end
@@ -862,6 +864,7 @@ xrayButton.MouseButton1Click:Connect(function()
 	end
 end)
 
+local isJumpscaring = false
 local function updateJumpscareMenu()
 	for _, v in ipairs(jumpscareDropFrame:GetChildren()) do
 		if not v:IsA("UIListLayout") then
@@ -881,14 +884,23 @@ local function updateJumpscareMenu()
 			btn.TextSize = 12
 			btn.Text = plr.DisplayName .. " (" .. plr.Name .. ")"
 			btn.LayoutOrder = order
+			btn.ZIndex = 14 
 			btn.Parent = jumpscareDropFrame
 
 			btn.MouseButton1Click:Connect(function()
+				if isJumpscaring then return end
 				local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 				local targetRoot = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
 
 				if myRoot and targetRoot then
-					myRoot.CFrame = targetRoot.CFrame * CFrame.new(0,0,-1)
+					isJumpscaring = true
+					local oldCFrame = myRoot.CFrame
+
+					myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, -3) * CFrame.Angles(0, math.pi, 0)
+
+					task.wait(0.1)
+					myRoot.CFrame = oldCFrame
+					isJumpscaring = false
 				end
 			end)
 
@@ -904,26 +916,83 @@ local function updateJumpscareMenu()
 	)
 end
 
+local function updateTeleportMenu()
+	if not teleportDropFrame.Visible then return end
+
+	for _, c in ipairs(teleportDropFrame:GetChildren()) do 
+		if not c:IsA("UIListLayout") then 
+			c:Destroy() 
+		end 
+	end
+
+	local grouped = {}
+	local orderCount = 1
+
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+			local teamName = p.Team and p.Team.Name or "Neutral"
+			if not grouped[teamName] then grouped[teamName] = {} end
+			table.insert(grouped[teamName], p)
+		end
+	end
+
+	for teamName, players in pairs(grouped) do
+		local teamHeader = Instance.new("TextLabel")
+		teamHeader.Size = UDim2.new(1, 0, 0, 24)
+		teamHeader.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+		teamHeader.TextColor3 = Color3.fromRGB(255, 255, 100)
+		teamHeader.Font = Enum.Font.GothamBold
+		teamHeader.TextSize = 11
+		teamHeader.Text = "Team: " .. teamName
+		teamHeader.LayoutOrder = orderCount
+		teamHeader.ZIndex = 14
+		teamHeader.Parent = teleportDropFrame
+		orderCount = orderCount + 1
+
+		for _, p in ipairs(players) do
+			local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude)
+
+			local btn = Instance.new("TextButton")
+			btn.Size = UDim2.new(1, 0, 0, 34)
+			btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+			btn.TextColor3 = Color3.new(1, 1, 1)
+			btn.Font = Enum.Font.Gotham
+			btn.TextSize = 12
+			btn.Text = p.DisplayName .. " [" .. dist .. " Studs]"
+			btn.LayoutOrder = orderCount
+			btn.ZIndex = 14
+			btn.Parent = teleportDropFrame
+
+			btn.MouseButton1Click:Connect(function()
+				if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+					LocalPlayer.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 0)
+				end
+			end)
+
+			orderCount = orderCount + 1
+		end
+	end
+end
+
 jumpscareDropdownBtn.MouseButton1Click:Connect(function()
 	jumpscareDropFrame.Visible = not jumpscareDropFrame.Visible
 
-	jumpscareDropdownBtn.Text =
-		jumpscareDropFrame.Visible and
-		"Jumpscare Players ^" or
-		"Jumpscare Players v"
-
 	if jumpscareDropFrame.Visible then
+		teleportDropFrame.Visible = false
+		teleportDropdownBtn.Text = "Teleport Controls v"
+		teleportDropFrame.Size = UDim2.new(1, 0, 0, 0)
 		updateJumpscareMenu()
 	else
 		jumpscareDropFrame.Size = UDim2.new(1,0,0,0)
 	end
+
+	jumpscareDropdownBtn.Text = jumpscareDropFrame.Visible and "Jumpscare Players ^" or "Jumpscare Players v"
 end)
 
--- Connect to Workspace to automatically catch new map parts streaming or spawning in
 workspace.DescendantAdded:Connect(function(desc)
 	if _G.XRayEnabled and desc:IsA("BasePart") then
 		if not desc:IsDescendantOf(LocalPlayer.Character) and not game.Players:GetPlayerFromCharacter(desc.Parent) then
-			task.wait(0.1) -- Small delay to allow the game engine to set default properties first
+			task.wait(0.1) 
 			if not xrayCache[desc] then
 				xrayCache[desc] = desc.Transparency
 			end
@@ -932,9 +1001,9 @@ workspace.DescendantAdded:Connect(function(desc)
 	end
 end)
 
-local teamDropdownBtn = bld.createButton("Team Configuration v", 33)
+local teamDropdownBtn = bld.createButton("Team Configuration v", 35)
 local teamDropFrame = Instance.new("Frame")
-teamDropFrame.Size = UDim2.new(1, 0, 0, 0); teamDropFrame.BackgroundTransparency = 1; teamDropFrame.LayoutOrder = 34; teamDropFrame.Visible = false; teamDropFrame.ZIndex = 13; teamDropFrame.Parent = bld.scrollingFrame
+teamDropFrame.Size = UDim2.new(1, 0, 0, 0); teamDropFrame.BackgroundTransparency = 1; teamDropFrame.LayoutOrder = 36; teamDropFrame.Visible = false; teamDropFrame.ZIndex = 13; teamDropFrame.Parent = bld.scrollingFrame
 
 local teamDropLayout = Instance.new("UIListLayout")
 teamDropLayout.Padding = UDim.new(0, 4); teamDropLayout.SortOrder = Enum.SortOrder.LayoutOrder; teamDropLayout.Parent = teamDropFrame
@@ -971,6 +1040,8 @@ local function globalESPUpdate()
 end
 
 local function refreshTeamDropdown()
+	for _, c in ipairs(teamDropFrame:GetChildren()) do if not c:IsA("UIListLayout") then c:Destroy() end end
+
 	local currentTeamLabel = Instance.new("TextLabel")
 	currentTeamLabel.Size = UDim2.new(1,0,0,25)
 	currentTeamLabel.BackgroundColor3 = Color3.fromRGB(35,35,35)
@@ -979,7 +1050,7 @@ local function refreshTeamDropdown()
 	currentTeamLabel.TextSize = 12
 	currentTeamLabel.Text = "Current Team: " .. (LocalPlayer.Team and LocalPlayer.Team.Name or "Neutral")
 	currentTeamLabel.Parent = teamDropFrame
-	for _, c in ipairs(teamDropFrame:GetChildren()) do if not c:IsA("UIListLayout") then c:Destroy() end end
+
 	local allTeams = Teams:GetTeams()
 
 	table.sort(allTeams, function(a, b)
@@ -990,7 +1061,7 @@ local function refreshTeamDropdown()
 		end
 		return a.Name < b.Name
 	end)
-	
+
 	if #allTeams == 0 then
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, 0, 0, 30); lbl.BackgroundTransparency = 1; lbl.Text = "No Teams Found"; lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -1000,7 +1071,7 @@ local function refreshTeamDropdown()
 			if not _G.TeamCheck or team ~= LocalPlayer.Team then
 				local teamName = team.Name
 				local isOff = _G.DisabledTeams[teamName] or false
-				local tBtn = bld.createButton("Team ["..teamName.."]: "..(isOff and "OFF" or "ON"), idx, teamDropFrame)
+				local tBtn = bld.createButton("Team ["..teamName.."]: "..(isOff and "OFF" or "ON"), idx + 1, teamDropFrame)
 				tBtn.BackgroundColor3 = team.TeamColor.Color
 				tBtn.ZIndex = 15
 				tBtn.MouseButton1Click:Connect(function()
@@ -1025,12 +1096,18 @@ LocalPlayer:GetPropertyChangedSignal("Team"):Connect(function()
 	updateTeamMenu()
 end)
 
-
--- Dynamic Open/Close Sizing Corrections to prevent button overlapping
 teleportDropdownBtn.MouseButton1Click:Connect(function()
 	teleportDropFrame.Visible = not teleportDropFrame.Visible
 	teleportDropdownBtn.Text = teleportDropFrame.Visible and "Teleport Controls ^" or "Teleport Controls v"
-	teleportDropFrame.Size = teleportDropFrame.Visible and UDim2.new(1, 0, 0, teleportDropLayout.AbsoluteContentSize.Y) or UDim2.new(1, 0, 0, 0)
+
+	if teleportDropFrame.Visible then
+		jumpscareDropFrame.Visible = false
+		jumpscareDropdownBtn.Text = "Jumpscare Players v"
+		jumpscareDropFrame.Size = UDim2.new(1, 0, 0, 0)
+		updateTeleportMenu()
+	else
+		teleportDropFrame.Size = UDim2.new(1, 0, 0, 0)
+	end
 end)
 
 settingDropdownBtn.MouseButton1Click:Connect(function()
@@ -1080,7 +1157,6 @@ sizePresetButton.MouseButton1Click:Connect(function()
 	sizePresetButton.Text = "Hitbox Size: " .. _G.HitboxScaleMode
 end)
 
--- Main Context Structural Frame Sizing State Cyclic Execution Handler
 frameResizeBtn.MouseButton1Click:Connect(function()
 	if _G.FrameScaleMode == "Medium" then 
 		_G.FrameScaleMode = "Big" 
@@ -1174,20 +1250,17 @@ mobileJumpBtn.MouseButton1Click:Connect(function()
 	mobileJumpBtn.Text = "Mobile Auto Jump: " .. (_G.DisableAutoJump and "OFF" or "ON")
 end)
 
--- CLICK LISTENER FOR ESP MASTER SWITCH
 espToggleButton.MouseButton1Click:Connect(function()
 	_G.ESPEnabled = not _G.ESPEnabled
 	espToggleButton.Text = "ESP Master Switch: " .. (_G.ESPEnabled and "ON" or "OFF")
 	globalESPUpdate()
 end)
 
--- CLICK LISTENER FOR NPC ESP SWITCH
 npcEspToggleButton.MouseButton1Click:Connect(function()
 	_G.NPCESPEnabled = not _G.NPCESPEnabled
 	npcEspToggleButton.Text = "NPC ESP Switch: " .. (_G.NPCESPEnabled and "ON" or "OFF")
 end)
 
--- INDEPENDENT MASTER STATE SWITCHES FOR WALKSPEED / JUMPPOWER
 wsToggleBtn.MouseButton1Click:Connect(function()
 	_G.WalkSpeedToggle = not _G.WalkSpeedToggle
 	_G.PlayerModEnabled = (_G.WalkSpeedToggle or _G.JumpPowerToggle)
@@ -1208,7 +1281,6 @@ jpToggleBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
--- GRANULAR SINGLE-STUD INCREMENT ADJUSTER (-1 / +1)
 wsMin.MouseButton1Click:Connect(function() _G.CustomWalkSpeed = math.max(0, _G.CustomWalkSpeed - 1); wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
 wsPls.MouseButton1Click:Connect(function() _G.CustomWalkSpeed = _G.CustomWalkSpeed + 1; wsDisp.Text = tostring(_G.CustomWalkSpeed) end)
 
@@ -1231,69 +1303,6 @@ playerResetBtn.MouseButton1Click:Connect(function()
 end)
 
 flingBtn.MouseButton1Click:Connect(function() flingEngine.fling(flingInput.Text) end)
-
-local function updateTeleportMenu()
-	if not teleportDropFrame.Visible then return end
-
-	-- Clear old buttons safely
-	for _, c in ipairs(teleportDropFrame:GetChildren()) do 
-		if not c:IsA("UIListLayout") then 
-			c:Destroy() 
-		end 
-	end
-
-	local grouped = {}
-	local orderCount = 1
-
-	-- Group players by team
-	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-			local teamName = p.Team and p.Team.Name or "Neutral"
-			if not grouped[teamName] then grouped[teamName] = {} end
-			table.insert(grouped[teamName], p)
-		end
-	end
-
-	-- Generate Headers and Clickable Teleport Buttons
-	for teamName, players in pairs(grouped) do
-		local teamHeader = Instance.new("TextLabel")
-		teamHeader.Size = UDim2.new(1, 0, 0, 24)
-		teamHeader.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-		teamHeader.TextColor3 = Color3.fromRGB(255, 255, 100)
-		teamHeader.Font = Enum.Font.GothamBold
-		teamHeader.TextSize = 11
-		teamHeader.Text = "Team: " .. teamName
-		teamHeader.LayoutOrder = orderCount
-		teamHeader.ZIndex = 14
-		teamHeader.Parent = teleportDropFrame
-		orderCount = orderCount + 1
-
-		for _, p in ipairs(players) do
-			local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude)
-
-			-- Force creation of a functional TextButton directly inside the dropdown frame
-			local btn = Instance.new("TextButton")
-			btn.Size = UDim2.new(1, 0, 0, 34)
-			btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-			btn.TextColor3 = Color3.new(1, 1, 1)
-			btn.Font = Enum.Font.Gotham
-			btn.TextSize = 12
-			btn.Text = p.DisplayName .. " [" .. dist .. " Studs]"
-			btn.LayoutOrder = orderCount
-			btn.ZIndex = 14
-			btn.Parent = teleportDropFrame
-
-			-- Active Teleport Connection Event
-			btn.MouseButton1Click:Connect(function()
-				if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-					LocalPlayer.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 0)
-				end
-			end)
-
-			orderCount = orderCount + 1
-		end
-	end
-end
 
 RunService.RenderStepped:Connect(function()
 	updateTeleportMenu()
