@@ -21,7 +21,6 @@ _G.FlingTarget = ""
 _G.CustomWalkSpeed = 16
 _G.CustomJumpPower = 50
 _G.PlayerModEnabled = false
-_G.FreezeAnimation = false
 _G.DayNightToggle = false -- false = Normal, true = Night Force
 _G.LoopFullBright = false
 
@@ -479,7 +478,7 @@ noticeLabel.TextColor3 = Color3.fromRGB(255, 200, 255); noticeLabel.Font = Enum.
 
 local localName = "User"
 pcall(function() localName = LocalPlayer.Name end)
-noticeLabel.Text = "Hello there " .. localName .. ",\nyou are using my script and make sure to give me credit if you're making a video as well.\n\nAlso you can add feedback to the GUI about what I should add next or if you found an issue!\n\nThank you for being a good person for now and good boy :3 or good girl :3"
+noticeLabel.Text = "Hello there " .. localName .. ",\nyou are using my script and make sure to give me credit if you're making a video as well.\n\nAlso you can add feedback to the GUI about what I should add next or if you found an issue!\n\nThank you for being a good boy :3 or a good girl :3\n\ Made by Zhu Yuan the Big Ass Bitch"
 
 local skipBtn = Instance.new("TextButton")
 skipBtn.Size = UDim2.new(0.5, 0, 0, 38); skipBtn.Position = UDim2.new(0.25, 0, 0.75, 0); skipBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
@@ -488,9 +487,9 @@ local btnCorner = Instance.new("UICorner")
 btnCorner.CornerRadius = UDim.new(0, 6); btnCorner.Parent = skipBtn
 
 task.spawn(function()
-    task.delay(15, function() if noticeFrame and noticeFrame.Parent then noticeFrame:Destroy() end end)
-    for i = 3, 1, -1 do skipBtn.Text = "OK ("..i..")" task.wait(1) end
-    skipBtn.Text = "OK"
+    task.delay(30, function() if noticeFrame and noticeFrame.Parent then noticeFrame:Destroy() end end)
+    for i = 5, 1, -1 do skipBtn.Text = "OK ("..i..")" task.wait(1) end
+    skipBtn.Text = "OK Daddy~"
     skipBtn.MouseButton1Click:Connect(function() noticeFrame:Destroy() end)
 end)
 
@@ -920,39 +919,6 @@ rtPls.MouseButton1Click:Connect(function() _G.RootSize = _G.RootSize + 5; rtDisp
 
 trMin.MouseButton1Click:Connect(function() _G.HitboxTransparency = math.max(0, _G.HitboxTransparency - 0.1); trDisp.Text = string.format("%.1f", _G.HitboxTransparency) end)
 trPls.MouseButton1Click:Connect(function() _G.HitboxTransparency = math.min(1, _G.HitboxTransparency + 0.1); trDisp.Text = string.format("%.1f", _G.HitboxTransparency) end)
-
-freezeAnimBtn.MouseButton1Click:Connect(function()
-    _G.FreezeAnimation = not _G.FreezeAnimation
-    freezeAnimBtn.Text = "Freeze Animation: " .. (_G.FreezeAnimation and "ON" or "OFF")
-    
-    local char = LocalPlayer.Character
-    if not char then return end
-    
-    -- Target the default Animate script
-    local animateScript = char:FindFirstChild("Animate")
-    
-    if _G.FreezeAnimation then
-        if animateScript then 
-            -- Store it so we can restore it later
-            _G.StoredAnimate = animateScript
-            animateScript.Parent = nil -- Disable animations by removing the script
-        end
-        
-        -- Also stop any currently playing tracks for immediate effect
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            for _, track in ipairs(hum:GetPlayingAnimationTracks()) do
-                track:Stop()
-            end
-        end
-    else
-        -- Restore the Animate script to re-enable animations
-        if _G.StoredAnimate then
-            _G.StoredAnimate.Parent = char
-            _G.StoredAnimate = nil
-        end
-    end
-end)
 
 dayNightBtn.MouseButton1Click:Connect(function()
     _G.DayNightToggle = not _G.DayNightToggle
