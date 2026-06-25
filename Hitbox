@@ -1168,13 +1168,12 @@ end
 
 task.spawn(function()
     while task.wait(1) do
-        if _G.InventoryLock then
-            pcall(function()
-                StarterGui:SetCoreGuiEnabled(
-                    Enum.CoreGuiType.Backpack,
-                    true
-                )
-            end)
-        end
+        pcall(function()
+            StarterGui:SetCoreGuiEnabled(
+                Enum.CoreGuiType.Backpack,
+                _G.InventoryLock
+            )
+        end)
     end
 end)
+
