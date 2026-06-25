@@ -312,23 +312,32 @@ _G.FlingEngine = {
     fling = function(targetName)
         if targetName == "" then return end
         local targetPlayer = nil
+        local search = string.lower(targetName)
+        
+        -- Use string.find to allow partial matching
         for _, p in ipairs(utils.Players:GetPlayers()) do
-            if string.lower(p.Name) == string.lower(targetName) or string.lower(p.DisplayName) == string.lower(targetName) then
-                targetPlayer = p; break
+            if string.find(string.lower(p.Name), search) or string.find(string.lower(p.DisplayName), search) then
+                targetPlayer = p
+                break
             end
         end
+
         if not targetPlayer or targetPlayer == utils.LocalPlayer or not targetPlayer.Character then return end
+        
         local tRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
         local myChar = utils.LocalPlayer.Character
         local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
         local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
+        
         if not tRoot or not myRoot or not myHum or myHum.SeatPart then return end
+        
         local oldV = myRoot.AssemblyLinearVelocity
         local oldC = myRoot.CFrame
         local bV = Instance.new("BodyVelocity")
         bV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
         bV.Velocity = Vector3.new(99999, 99999, 99999)
         bV.Parent = myRoot
+        
         local start = os.clock()
         while os.clock() - start < 0.4 do
             utils.RunService.Heartbeat:Wait()
@@ -336,6 +345,7 @@ _G.FlingEngine = {
                 myRoot.CFrame = tRoot.CFrame + Vector3.new(math.random(-1,1), 0, math.random(-1,1))
             else break end
         end
+        
         bV:Destroy()
         myRoot.AssemblyLinearVelocity = oldV
         myRoot.CFrame = oldC
@@ -520,10 +530,10 @@ end)
 toggleMenuBtn.MouseButton1Click:Connect(function() frame.Visible = not frame.Visible; toggleMenuBtn.Text = frame.Visible and "[X]" or "[O]" end)
 
 local chatFrame = Instance.new("Frame")
-chatFrame.Size = UDim2.new(0, 300, 0, 350); chatFrame.Position = UDim2.new(0, 280, 0, 60); chatFrame.BackgroundColor3 = Color3.fromRGB(255, 25, 25); chatFrame.BorderSizePixel = 0; chatFrame.Visible = false; chatFrame.ZIndex = 10; chatFrame.Parent = screenGui
+chatFrame.Size = UDim2.new(0, 300, 0, 350); chatFrame.Position = UDim2.new(0, 280, 0, 60); chatFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15); chatFrame.BorderSizePixel = 0; chatFrame.Visible = false; chatFrame.ZIndex = 10; chatFrame.Parent = screenGui
 
 local chatTopBar = Instance.new("Frame")
-chatTopBar.Size = UDim2.new(1, 0, 0, 30); chatTopBar.BackgroundColor3 = Color3.fromRGB(15, 15, 15); chatTopBar.ZIndex = 11; chatTopBar.Parent = chatFrame
+chatTopBar.Size = UDim2.new(1, 0, 0, 30); chatTopBar.BackgroundColor3 = Color3.fromRGB(0, 0, 0); chatTopBar.ZIndex = 11; chatTopBar.Parent = chatFrame
 
 local chatTitle = Instance.new("TextLabel")
 chatTitle.Size = UDim2.new(1, 0, 1, 0); chatTitle.BackgroundTransparency = 1; chatTitle.Text = "Global Script Feedback Logs"; chatTitle.TextColor3 = Color3.fromRGB(255, 255, 255); chatTitle.Font = Enum.Font.GothamBold; chatTitle.TextSize = 12; chatTitle.ZIndex = 12; chatTitle.Parent = chatTopBar
@@ -550,7 +560,7 @@ local chatLogLayout = Instance.new("UIListLayout")
 chatLogLayout.Padding = UDim.new(0, 4); chatLogLayout.SortOrder = Enum.SortOrder.LayoutOrder; chatLogLayout.Parent = chatLogScroll
 
 local feedbackBox = Instance.new("TextBox")
-feedbackBox.Size = UDim2.new(1, -70, 0, 35); feedbackBox.Position = UDim2.new(0, 5, 1, -40); feedbackBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45); feedbackBox.TextColor3 = Color3.new(1, 1, 1); feedbackBox.PlaceholderText = "Type feedback/chat..."; feedbackBox.Text = ""; feedbackBox.Font = Enum.Font.Gotham; feedbackBox.TextSize = 12; feedbackBox.ZIndex = 12; feedbackBox.Parent = chatFrame
+feedbackBox.Size = UDim2.new(1, -70, 0, 35); feedbackBox.Position = UDim2.new(0, 5, 1, -40); feedbackBox.BackgroundColor3 = Color3.fromRGB(25, 25, 25); feedbackBox.TextColor3 = Color3.new(1, 1, 1); feedbackBox.PlaceholderText = "Type feedback/chat..."; feedbackBox.Text = ""; feedbackBox.Font = Enum.Font.Gotham; feedbackBox.TextSize = 12; feedbackBox.ZIndex = 12; feedbackBox.Parent = chatFrame
 
 local sendChatBtn = Instance.new("TextButton")
 sendChatBtn.Size = UDim2.new(0, 60, 0, 35); sendChatBtn.Position = UDim2.new(1, -65, 1, -40); sendChatBtn.BackgroundColor3 = Color3.fromRGB(50, 120, 50); sendChatBtn.TextColor3 = Color3.new(1, 1, 1); sendChatBtn.Font = Enum.Font.GothamBold; sendChatBtn.TextSize = 12; sendChatBtn.Text = "Send"; sendChatBtn.ZIndex = 12; sendChatBtn.Parent = chatFrame
@@ -632,6 +642,34 @@ local function createTrackerRow(labelTxt, valTxt, order, parentFrame)
     disp.TextColor3 = Color3.new(1,1,1); disp.Font = Enum.Font.GothamBold; disp.TextSize = 14; disp.Text = valTxt; disp.ZIndex = 15; disp.Parent = row
     local plus = createButton("+", 3, row); plus.Size = UDim2.new(0, 45, 1, 0); plus.Position = UDim2.new(1, -50, 0, 0); plus.ZIndex = 15
     return minus, plus, disp
+end
+
+local function updateTeleportMenu()
+    if not teleportDropFrame.Visible then return end
+    -- Clear and rebuild groups
+    for _, c in ipairs(teleportDropFrame:GetChildren()) do if not c:IsA("UIListLayout") then c:Destroy() end end
+    
+    local grouped = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            local teamName = p.Team and p.Team.Name or "Neutral"
+            if not grouped[teamName] then grouped[teamName] = {} end
+            table.insert(grouped[teamName], p)
+        end
+    end
+    
+    for teamName, players in pairs(grouped) do
+        local head = bld.createHeader("Team: " .. teamName, Color3.fromRGB(255, 255, 255), 1)
+        head.Parent = teleportDropFrame
+        for _, p in ipairs(players) do
+            local b = bld.createButton(p.DisplayName, 2, teleportDropFrame)
+            b.MouseButton1Click:Connect(function()
+                if LocalPlayer.Character and p.Character then
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 0)
+                end
+            end)
+        end
+    end
 end
 
 _G.UIBuilders = { createHeader = createHeader, createButton = createButton, createTrackerRow = createTrackerRow, scrollingFrame = scrollingFrame, frame = frame }
@@ -790,6 +828,26 @@ local function refreshTeamDropdown()
                 end)
             end
         end
+    end
+end
+
+local function applyPlayerSettings(char)
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    
+    -- Reset Movement
+    if _G.PlayerModEnabled then
+        hum.WalkSpeed = _G.CustomWalkSpeed
+        hum.JumpPower = _G.CustomJumpPower
+    else
+        hum.WalkSpeed = 16
+        hum.JumpPower = 50
+    end
+    
+    -- Animator Lock
+    if _G.FreezeAnimation then
+        local animator = hum:FindFirstChildOfClass("Animator")
+        if animator then animator.Parent = nil end
     end
 end
 
