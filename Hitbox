@@ -27,7 +27,6 @@ _G.WalkSpeedToggle = false  -- Independent Walkspeed Toggle
 _G.JumpPowerToggle = false  -- Independent Jumppower Toggle
 _G.DayNightToggle = false 
 _G.LoopFullBright = false
-local teleportButtonsCache = {}
 
 -- Dynamic Frame Constraints Configuration Setup Table
 local frameSizes = {
@@ -1094,28 +1093,29 @@ end)
 
 flingBtn.MouseButton1Click:Connect(function() flingEngine.fling(flingInput.Text) end)
 
-local function rebuildTeleportMenu()
+local function updateTeleportMenu()
 	if not teleportDropFrame.Visible then return end
 
-	-- Clear old entries and connections safely
+	-- Clear old buttons safely
 	for _, c in ipairs(teleportDropFrame:GetChildren()) do 
-		if not c:IsA("UIListLayout") then c:Destroy() end 
+		if not c:IsA("UIListLayout") then 
+			c:Destroy() 
+		end 
 	end
-	table.clear(teleportButtonsCache)
 
 	local grouped = {}
 	local orderCount = 1
 
 	-- Group players by team
 	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= LocalPlayer then
+		if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
 			local teamName = p.Team and p.Team.Name or "Neutral"
 			if not grouped[teamName] then grouped[teamName] = {} end
 			table.insert(grouped[teamName], p)
 		end
 	end
 
-	-- Generate Headers and Static Clickable Teleport Buttons
+	-- Generate Headers and Clickable Teleport Buttons
 	for teamName, players in pairs(grouped) do
 		local teamHeader = Instance.new("TextLabel")
 		teamHeader.Size = UDim2.new(1, 0, 0, 24)
@@ -1130,61 +1130,34 @@ local function rebuildTeleportMenu()
 		orderCount = orderCount + 1
 
 		for _, p in ipairs(players) do
+			local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude)
+
+			-- Force creation of a functional TextButton directly inside the dropdown frame
 			local btn = Instance.new("TextButton")
 			btn.Size = UDim2.new(1, 0, 0, 34)
 			btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 			btn.TextColor3 = Color3.new(1, 1, 1)
 			btn.Font = Enum.Font.Gotham
 			btn.TextSize = 12
-			btn.Text = p.DisplayName .. " [Calculating...]"
+			btn.Text = p.DisplayName .. " [" .. dist .. " Studs]"
 			btn.LayoutOrder = orderCount
 			btn.ZIndex = 14
 			btn.Parent = teleportDropFrame
 
-			-- This connection is now PERMANENT and won't get deleted every frame!
+			-- Active Teleport Connection Event
 			btn.MouseButton1Click:Connect(function()
 				if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
 					LocalPlayer.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 0)
 				end
 			end)
 
-			-- Cache it so RenderStepped can change the text safely
-			teleportButtonsCache[p] = btn
 			orderCount = orderCount + 1
 		end
 	end
 end
 
-local function updateTeleportDistances()
-	if not teleportDropFrame.Visible then return end
-
-	for player, button in pairs(teleportButtonsCache) do
-		if player and player.Parent and button then -- Fixed the syntax error here!
-			if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-				local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude)
-				button.Text = player.DisplayName .. " [" .. dist .. " Studs]"
-			else
-				button.Text = player.DisplayName .. " [Unknown Location]"
-			end
-		end
-	end
-end
-
-teleportDropdownBtn.MouseButton1Click:Connect(function()
-	teleportDropFrame.Visible = not teleportDropFrame.Visible
-	teleportDropdownBtn.Text = teleportDropFrame.Visible and "Teleport Controls ^" or "Teleport Controls v"
-	teleportDropFrame.Size = teleportDropFrame.Visible and UDim2.new(1, 0, 0, teleportDropLayout.AbsoluteContentSize.Y) or UDim2.new(1, 0, 0, 0)
-
-	if teleportDropFrame.Visible then
-		rebuildTeleportMenu()
-	end
-end)
-
-Players.PlayerAdded:Connect(function() task.wait(0.5); rebuildTeleportMenu() end)
-Players.PlayerRemoving:Connect(function() task.wait(0.1); rebuildTeleportMenu() end)
-
 RunService.RenderStepped:Connect(function()
-	updateTeleportDistances() -- CHANGED HERE: Only updates text distances, doesn't delete buttons!
+	updateTeleportMenu()
 	globalESPUpdate()
 
 	if _G.LoopFullBright then Lighting.Ambient = Color3.fromRGB(255, 255, 255); Lighting.Brightness = 2; Lighting.ClockTime = 14 end
@@ -1222,31 +1195,6 @@ RunService.RenderStepped:Connect(function()
 		end
 	else
 		mech.restoreAll()
-	end
-
-	if _G.NPCHitbox or _G.NPCESPEnabled then
-		for npc, _ in pairs(trackedNPCs) do
-			if npc and npc.Parent and isNPCModel(npc) then
-				local hum = npc:FindFirstChildOfClass("Humanoid")
-				if hum and hum.Health > 0 then
-					if _G.NPCHitbox then pipeline.applyToNPC(npc) end
-					if _G.NPCESPEnabled then
-						if not npcLabels[npc] then graphics.createNPCLabel(npc) end
-					else
-						graphics.removeNPCLabel(npc)
-					end
-				else
-					mech.restoreNPC(npc)
-					graphics.removeNPCLabel(npc)
-				end
-			else
-				untrackNPC(npc)
-			end
-		end
-	else
-		mech.restoreAllNPCs()
-		for npc, _ in pairs(npcLabels) do graphics.removeNPCLabel(npc) end
-		for npc, _ in pairs(trackedNPCs) do untrackNPC(npc) end
 	end
 
 	if _G.NPCHitbox or _G.NPCESPEnabled then
