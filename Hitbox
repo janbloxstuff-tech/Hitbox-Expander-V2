@@ -18,6 +18,7 @@ _G.CheckForcefield = false
 _G.LayModEnabled = false 
 _G.FlingTarget = ""
 _G.DisableAutoJump = false 
+_G.GraphicsLevel = 10
 
 -- Player Config Settings & Bypass Variables
 _G.CustomWalkSpeed = 16
@@ -738,7 +739,12 @@ local poseToggleButton = bld.createButton(getRigTypeLabel(), 13)
 local mobileJumpBtn = bld.createButton("Mobile Auto Jump: ON", 14)
 local dayNightBtn = bld.createButton("Day/Night: NORMAL", 15)
 local fullBrightBtn = bld.createButton("Loop FullBright: OFF", 16)
-local graphicsBtn = bld.createButton("Graphics: Level 10", 17)
+
+local gfxMin, gfxPls, gfxDisp = bld.createTrackerRow(
+	"Graphics Level",
+	tostring(_G.GraphicsLevel),
+	17
+)
 
 local flingContainer = Instance.new("Frame")
 flingContainer.Size = UDim2.new(1, 0, 0, 40); flingContainer.BackgroundTransparency = 1; flingContainer.LayoutOrder = 18; flingContainer.ZIndex = 13; flingContainer.Parent = bld.scrollingFrame
@@ -760,6 +766,28 @@ playerResetBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 40)
 -- Live Teleport Submenu Rig
 bld.createHeader("Navigation Framework", Color3.fromRGB(255, 255, 100), 24)
 local teleportDropdownBtn = bld.createButton("Teleport Controls v", 25)
+local jumpscareDropdownBtn = bld.createButton("Jumpscare Players v", 26)
+
+local jumpscareDropFrame = Instance.new("Frame")
+jumpscareDropFrame.Size = UDim2.new(1, 0, 0, 0)
+jumpscareDropFrame.BackgroundTransparency = 1
+jumpscareDropFrame.LayoutOrder = 27
+jumpscareDropFrame.Visible = false
+jumpscareDropFrame.Parent = bld.scrollingFrame
+
+local jumpscareLayout = Instance.new("UIListLayout")
+jumpscareLayout.Padding = UDim.new(0, 4)
+jumpscareLayout.SortOrder = Enum.SortOrder.LayoutOrder
+jumpscareLayout.Parent = jumpscareDropFrame
+
+jumpscareLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+	if jumpscareDropFrame.Visible then
+		jumpscareDropFrame.Size = UDim2.new(
+			1, 0,
+			0, jumpscareLayout.AbsoluteContentSize.Y
+		)
+	end
+end)
 
 -- SUBMENU CONTROLS USING NESTED AUTOMATIC LIST SYSTEM TO PREVENT BUTTONS OVERLAPPING
 local teleportDropFrame = Instance.new("Frame")
@@ -779,7 +807,7 @@ local espToggleButton = bld.createButton("ESP Master Switch: OFF", 28)
 local npcEspToggleButton = bld.createButton("NPC ESP Switch: OFF", 29)
 local teamCheckButton = bld.createButton("ESP Team Check: OFF", 30)
 
-local settingDropdownBtn = bld.createButton("Name and Health Settings v", 31)
+local settingDropdownBtn = bld.createButton("Configure Side Settings  v", 31)
 local settingDropFrame = Instance.new("Frame")
 settingDropFrame.Size = UDim2.new(1, 0, 0, 0); settingDropFrame.BackgroundTransparency = 1; settingDropFrame.LayoutOrder = 32; settingDropFrame.Visible = false; settingDropFrame.ZIndex = 13; settingDropFrame.Parent = bld.scrollingFrame
 
@@ -834,6 +862,71 @@ xrayButton.MouseButton1Click:Connect(function()
 	end
 end)
 
+jumpscareDropdownBtn.MouseButton1Click:Connect(function()
+	jumpscareDropFrame.Visible = not jumpscareDropFrame.Visible
+
+	jumpscareDropdownBtn.Text =
+		jumpscareDropFrame.Visible
+		and "Jumpscare Players ^"
+		or "Jumpscare Players v"
+
+	jumpscareDropFrame.Size =
+		jumpscareDropFrame.Visible
+		and UDim2.new(1,0,0,jumpscareLayout.AbsoluteContentSize.Y)
+		or UDim2.new(1,0,0,0)
+end)
+
+local function updateJumpscareMenu()
+	if not jumpscareDropFrame.Visible then
+		return
+	end
+
+	for _, v in ipairs(jumpscareDropFrame:GetChildren()) do
+		if not v:IsA("UIListLayout") then
+			v:Destroy()
+		end
+	end
+
+	local order = 1
+
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer then
+
+			local btn = Instance.new("TextButton")
+			btn.Size = UDim2.new(1,0,0,34)
+			btn.BackgroundColor3 = Color3.fromRGB(80,40,40)
+			btn.TextColor3 = Color3.new(1,1,1)
+			btn.Font = Enum.Font.GothamBold
+			btn.TextSize = 12
+			btn.Text = plr.DisplayName
+			btn.LayoutOrder = order
+			btn.Parent = jumpscareDropFrame
+
+			btn.MouseButton1Click:Connect(function()
+
+				local targetChar = plr.Character
+				local myChar = LocalPlayer.Character
+
+				if not targetChar or not myChar then
+					return
+				end
+
+				local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+				local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+
+				if targetRoot and myRoot then
+					myRoot.CFrame =
+						targetRoot.CFrame *
+						CFrame.new(0, 0, -1)
+				end
+
+			end)
+
+			order += 1
+		end
+	end
+end
+
 -- Connect to Workspace to automatically catch new map parts streaming or spawning in
 workspace.DescendantAdded:Connect(function(desc)
 	if _G.XRayEnabled and desc:IsA("BasePart") then
@@ -886,8 +979,26 @@ local function globalESPUpdate()
 end
 
 local function refreshTeamDropdown()
+	local currentTeamLabel = Instance.new("TextLabel")
+	currentTeamLabel.Size = UDim2.new(1,0,0,25)
+	currentTeamLabel.BackgroundColor3 = Color3.fromRGB(35,35,35)
+	currentTeamLabel.TextColor3 = Color3.fromRGB(100,255,100)
+	currentTeamLabel.Font = Enum.Font.GothamBold
+	currentTeamLabel.TextSize = 12
+	currentTeamLabel.Text = "Current Team: " .. (LocalPlayer.Team and LocalPlayer.Team.Name or "Neutral")
+	currentTeamLabel.Parent = teamDropFrame
 	for _, c in ipairs(teamDropFrame:GetChildren()) do if not c:IsA("UIListLayout") then c:Destroy() end end
 	local allTeams = Teams:GetTeams()
+
+	table.sort(allTeams, function(a, b)
+		if LocalPlayer.Team == a then
+			return true
+		elseif LocalPlayer.Team == b then
+			return false
+		end
+		return a.Name < b.Name
+	end)
+	
 	if #allTeams == 0 then
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, 0, 0, 30); lbl.BackgroundTransparency = 1; lbl.Text = "No Teams Found"; lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -910,6 +1021,19 @@ local function refreshTeamDropdown()
 	end
 end
 
+local function updateTeamMenu()
+	if teamDropFrame.Visible then
+		refreshTeamDropdown()
+	end
+	globalESPUpdate()
+end
+
+LocalPlayer:GetPropertyChangedSignal("Team"):Connect(function()
+	task.wait(0.1)
+	updateTeamMenu()
+end)
+
+
 -- Dynamic Open/Close Sizing Corrections to prevent button overlapping
 teleportDropdownBtn.MouseButton1Click:Connect(function()
 	teleportDropFrame.Visible = not teleportDropFrame.Visible
@@ -919,7 +1043,7 @@ end)
 
 settingDropdownBtn.MouseButton1Click:Connect(function()
 	settingDropFrame.Visible = not settingDropFrame.Visible
-	settingDropdownBtn.Text = settingDropFrame.Visible and "Name and Health Settings ^" or "Name and Health Settings v"
+	settingDropdownBtn.Text = settingDropFrame.Visible and "Configure Side Settings ^" or "Configure Side Settings  v"
 	settingDropFrame.Size = settingDropFrame.Visible and UDim2.new(1, 0, 0, settingDropLayout.AbsoluteContentSize.Y) or UDim2.new(1, 0, 0, 0)
 end)
 
@@ -949,9 +1073,9 @@ forcefieldCheckButton.MouseButton1Click:Connect(function()
 end)
 
 teamCheckButton.MouseButton1Click:Connect(function()
-	_G.TeamCheck = not _G.TeamCheck; teamCheckButton.Text = "Team Check: " .. (_G.TeamCheck and "ON" or "OFF")
-	if teamDropFrame.Visible then refreshTeamDropdown() end
-	globalESPUpdate()
+	_G.TeamCheck = not _G.TeamCheck
+	teamCheckButton.Text = "Team Check: " .. (_G.TeamCheck and "ON" or "OFF")
+	updateTeamMenu()
 end)
 
 changeButton.MouseButton1Click:Connect(function()
@@ -1003,12 +1127,35 @@ fullBrightBtn.MouseButton1Click:Connect(function()
 	if not _G.LoopFullBright then Lighting.Ambient = Color3.fromRGB(128,128,128) end
 end)
 
-graphicsBtn.MouseButton1Click:Connect(function()
-	local cur = settings().Rendering.QualityLevel.Value
-	local nextLevel = cur >= 21 and 1 or cur + 5
-	pcall(function() settings().Rendering.QualityLevel = Enum.QualityLevel["Level" .. string.format("%02d", nextLevel)] end)
-	graphicsBtn.Text = "Graphics: Level " .. settings().Rendering.QualityLevel.Name
+local function updateGraphics()
+	gfxDisp.Text = tostring(_G.GraphicsLevel)
+
+	if _G.GraphicsLevel <= 5 then
+		Lighting.GlobalShadows = false
+		Lighting.FogEnd = 500
+		Lighting.Brightness = 1
+	elseif _G.GraphicsLevel <= 10 then
+		Lighting.GlobalShadows = true
+		Lighting.FogEnd = 1000
+		Lighting.Brightness = 2
+	else
+		Lighting.GlobalShadows = true
+		Lighting.FogEnd = 100000
+		Lighting.Brightness = 3
+	end
+end
+
+gfxMin.MouseButton1Click:Connect(function()
+	_G.GraphicsLevel = math.max(1, _G.GraphicsLevel - 1)
+	updateGraphics()
 end)
+
+gfxPls.MouseButton1Click:Connect(function()
+	_G.GraphicsLevel = math.min(21, _G.GraphicsLevel + 1)
+	updateGraphics()
+end)
+
+updateGraphics()
 
 showNameButton.MouseButton1Click:Connect(function()
 	_G.ShowName = not _G.ShowName
@@ -1159,6 +1306,7 @@ end
 RunService.RenderStepped:Connect(function()
 	updateTeleportMenu()
 	globalESPUpdate()
+	updateJumpscareMenu()
 
 	if _G.LoopFullBright then Lighting.Ambient = Color3.fromRGB(255, 255, 255); Lighting.Brightness = 2; Lighting.ClockTime = 14 end
 	if _G.DayNightToggle and not _G.LoopFullBright then Lighting.ClockTime = 0 end
