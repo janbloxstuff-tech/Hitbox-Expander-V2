@@ -1145,7 +1145,7 @@ RunService.RenderStepped:Connect(function()
             untrackNPC(npc)
         end
     end
-end
+end)
 
 Players.PlayerAdded:Connect(function(p)
     p.CharacterAdded:Connect(function() task.wait(0.5); globalESPUpdate() end)
