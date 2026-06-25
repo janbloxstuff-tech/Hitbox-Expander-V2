@@ -853,26 +853,6 @@ local function refreshTeamDropdown()
     end
 end
 
-local function applyPlayerSettings(char)
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
-    
-    -- Reset Movement
-    if _G.PlayerModEnabled then
-        hum.WalkSpeed = _G.CustomWalkSpeed
-        hum.JumpPower = _G.CustomJumpPower
-    else
-        hum.WalkSpeed = 16
-        hum.JumpPower = 50
-    end
-    
-    -- Animator Lock
-    if _G.FreezeAnimation then
-        local animator = hum:FindFirstChildOfClass("Animator")
-        if animator then animator.Parent = nil end
-    end
-end
-
 teamDropdownBtn.MouseButton1Click:Connect(function()
     teamDropFrame.Visible = not teamDropFrame.Visible
     teamDropdownBtn.Text = teamDropFrame.Visible and "Team Configuration ^" or "Team Configuration v"
@@ -942,13 +922,36 @@ trMin.MouseButton1Click:Connect(function() _G.HitboxTransparency = math.max(0, _
 trPls.MouseButton1Click:Connect(function() _G.HitboxTransparency = math.min(1, _G.HitboxTransparency + 0.1); trDisp.Text = string.format("%.1f", _G.HitboxTransparency) end)
 
 freezeAnimBtn.MouseButton1Click:Connect(function()
-    _G.FreezeAnimation = not _G.FreezeAnimation; freezeAnimBtn.Text = "Freeze Animation: " .. (_G.FreezeAnimation and "ON" or "OFF")
-    pcall(function()
-        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then
-            for _, track in ipairs(hum:GetPlayingAnimationTracks()) do if _G.FreezeAnimation then track:AdjustSpeed(0) else track:AdjustSpeed(1) end end
+    _G.FreezeAnimation = not _G.FreezeAnimation
+    freezeAnimBtn.Text = "Freeze Animation: " .. (_G.FreezeAnimation and "ON" or "OFF")
+    
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    -- Target the default Animate script
+    local animateScript = char:FindFirstChild("Animate")
+    
+    if _G.FreezeAnimation then
+        if animateScript then 
+            -- Store it so we can restore it later
+            _G.StoredAnimate = animateScript
+            animateScript.Parent = nil -- Disable animations by removing the script
         end
-    end)
+        
+        -- Also stop any currently playing tracks for immediate effect
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            for _, track in ipairs(hum:GetPlayingAnimationTracks()) do
+                track:Stop()
+            end
+        end
+    else
+        -- Restore the Animate script to re-enable animations
+        if _G.StoredAnimate then
+            _G.StoredAnimate.Parent = char
+            _G.StoredAnimate = nil
+        end
+    end
 end)
 
 dayNightBtn.MouseButton1Click:Connect(function()
