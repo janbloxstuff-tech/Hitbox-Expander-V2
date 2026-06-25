@@ -4,6 +4,7 @@
 _G.HeadSize = 5
 _G.RootSize = 5
 _G.HitboxScaleMode = "Medium"
+_G.FrameScaleMode = "Medium" -- Frame Preset Sizing Variable Initialization
 _G.HitboxTransparency = 0.5
 _G.Disabled = true 
 _G.TargetPart = "HumanoidRootPart"
@@ -26,6 +27,13 @@ _G.WalkSpeedToggle = false  -- Independent Walkspeed Toggle
 _G.JumpPowerToggle = false  -- Independent Jumppower Toggle
 _G.DayNightToggle = false 
 _G.LoopFullBright = false
+
+-- Dynamic Frame Constraints Configuration Setup Table
+local frameSizes = {
+	Small = UDim2.new(0, 380, 0, 500),
+	Medium = UDim2.new(0, 380, 0, 780),
+	Big = UDim2.new(0, 380, 0, 950)
+}
 
 -- Dynamic Filter Collections
 _G.DisabledTeams = _G.DisabledTeams or {}
@@ -642,7 +650,7 @@ local uiList = Instance.new("UIListLayout")
 uiList.Padding = UDim.new(0, 6); uiList.SortOrder = Enum.SortOrder.LayoutOrder; uiList.Parent = scrollingFrame
 
 uiList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-	scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, uiList.AbsoluteContentSize.Y + 30)
+	scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, uiList.AbsoluteContentSize.Y + 100) -- Increased padding buffer allocation
 end)
 
 local function createHeader(text, color, order)
@@ -705,13 +713,17 @@ targetLabel.LayoutOrder = 4; targetLabel.ZIndex = 13; targetLabel.Parent = bld.s
 
 local changeButton = bld.createButton("Change Target Part", 5)
 local sizePresetButton = bld.createButton("Hitbox Size: Medium", 6)
-local npcToggleButton = bld.createButton("NPC Hitbox: OFF", 7)
 
-local szMin, szPls, szDisp = bld.createTrackerRow("Head Size Adjuster", tostring(_G.HeadSize), 8)
-local rtMin, rtPls, rtDisp = bld.createTrackerRow("RootPart Size Adjuster", tostring(_G.RootSize), 9)
-local trMin, trPls, trDisp = bld.createTrackerRow("Hitbox Transparency", string.format("%.1f", _G.HitboxTransparency), 10)
+-- Dynamic Frame Resize Toggle Interface Object Button Assignment
+local frameResizeBtn = bld.createButton("Resize Frame: Medium", 7)
 
-bld.createHeader("Player Configuration", Color3.fromRGB(150, 255, 150), 11)
+local npcToggleButton = bld.createButton("NPC Hitbox: OFF", 8)
+
+local szMin, szPls, szDisp = bld.createTrackerRow("Head Size Adjuster", tostring(_G.HeadSize), 9)
+local rtMin, rtPls, rtDisp = bld.createTrackerRow("RootPart Size Adjuster", tostring(_G.RootSize), 10)
+local trMin, trPls, trDisp = bld.createTrackerRow("Hitbox Transparency", string.format("%.1f", _G.HitboxTransparency), 11)
+
+bld.createHeader("Player Configuration", Color3.fromRGB(150, 255, 150), 12)
 
 local function getRigTypeLabel()
 	local char = LocalPlayer.Character
@@ -722,36 +734,36 @@ local function getRigTypeLabel()
 	return "Lay Down Switch: OFF"
 end
 
-local poseToggleButton = bld.createButton(getRigTypeLabel(), 12)
-local mobileJumpBtn = bld.createButton("Mobile Auto Jump: ON", 13)
-local dayNightBtn = bld.createButton("Day/Night: NORMAL", 14)
-local fullBrightBtn = bld.createButton("Loop FullBright: OFF", 15)
-local graphicsBtn = bld.createButton("Graphics: Level 10", 16)
+local poseToggleButton = bld.createButton(getRigTypeLabel(), 13)
+local mobileJumpBtn = bld.createButton("Mobile Auto Jump: ON", 14)
+local dayNightBtn = bld.createButton("Day/Night: NORMAL", 15)
+local fullBrightBtn = bld.createButton("Loop FullBright: OFF", 16)
+local graphicsBtn = bld.createButton("Graphics: Level 10", 17)
 
 local flingContainer = Instance.new("Frame")
-flingContainer.Size = UDim2.new(1, 0, 0, 40); flingContainer.BackgroundTransparency = 1; flingContainer.LayoutOrder = 17; flingContainer.ZIndex = 13; flingContainer.Parent = bld.scrollingFrame
+flingContainer.Size = UDim2.new(1, 0, 0, 40); flingContainer.BackgroundTransparency = 1; flingContainer.LayoutOrder = 18; flingContainer.ZIndex = 13; flingContainer.Parent = bld.scrollingFrame
 local flingInput = Instance.new("TextBox")
 flingInput.Size = UDim2.new(1, -70, 1, 0); flingInput.BackgroundColor3 = Color3.fromRGB(45, 45, 45); flingInput.TextColor3 = Color3.new(1, 1, 1)
 flingInput.Font = Enum.Font.Gotham; flingInput.TextSize = 12; flingInput.Text = ""; flingInput.PlaceholderText = "Target Name..."; flingInput.ZIndex = 14; flingInput.Parent = flingContainer
 local flingBtn = bld.createButton("Fling", 2, flingContainer); flingBtn.Size = UDim2.new(0, 65, 1, 0); flingBtn.Position = UDim2.new(1, -65, 0, 0); flingBtn.ZIndex = 14
 
 -- WALK SPEED & JUMP POWER RE-RIG WITH INDEPENDENT STATUS LOCK TOGGLES
-local wsToggleBtn = bld.createButton("Master Walkspeed State: OFF", 18)
-local wsMin, wsPls, wsDisp = bld.createTrackerRow("LocalPlayer Walkspeed", tostring(_G.CustomWalkSpeed), 19)
+local wsToggleBtn = bld.createButton("Master Walkspeed State: OFF", 19)
+local wsMin, wsPls, wsDisp = bld.createTrackerRow("LocalPlayer Walkspeed", tostring(_G.CustomWalkSpeed), 20)
 
-local jpToggleBtn = bld.createButton("Master Jumppower State: OFF", 20)
-local jpMin, jpPls, jpDisp = bld.createTrackerRow("LocalPlayer Jumppower", tostring(_G.CustomJumpPower), 21)
+local jpToggleBtn = bld.createButton("Master Jumppower State: OFF", 21)
+local jpMin, jpPls, jpDisp = bld.createTrackerRow("LocalPlayer Jumppower", tostring(_G.CustomJumpPower), 22)
 
-local playerResetBtn = bld.createButton("Reset Movement Attributes", 22)
+local playerResetBtn = bld.createButton("Reset Movement Attributes", 23)
 playerResetBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 40)
 
 -- Live Teleport Submenu Rig
-bld.createHeader("Navigation Framework", Color3.fromRGB(255, 255, 100), 23)
-local teleportDropdownBtn = bld.createButton("Teleport Controls v", 24)
+bld.createHeader("Navigation Framework", Color3.fromRGB(255, 255, 100), 24)
+local teleportDropdownBtn = bld.createButton("Teleport Controls v", 25)
 
 -- SUBMENU CONTROLS USING NESTED AUTOMATIC LIST SYSTEM TO PREVENT BUTTONS OVERLAPPING
 local teleportDropFrame = Instance.new("Frame")
-teleportDropFrame.Size = UDim2.new(1, 0, 0, 0); teleportDropFrame.BackgroundTransparency = 1; teleportDropFrame.LayoutOrder = 25
+teleportDropFrame.Size = UDim2.new(1, 0, 0, 0); teleportDropFrame.BackgroundTransparency = 1; teleportDropFrame.LayoutOrder = 26
 teleportDropFrame.Visible = false; teleportDropFrame.ZIndex = 13; teleportDropFrame.Parent = bld.scrollingFrame
 local teleportDropLayout = Instance.new("UIListLayout")
 teleportDropLayout.Padding = UDim.new(0, 4); teleportDropLayout.SortOrder = Enum.SortOrder.LayoutOrder; teleportDropLayout.Parent = teleportDropFrame
@@ -762,14 +774,14 @@ teleportDropLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(funct
 	end
 end)
 
-bld.createHeader("ESP Configuration", Color3.fromRGB(255, 100, 100), 26)
-local espToggleButton = bld.createButton("ESP Master Switch: OFF", 27)
-local npcEspToggleButton = bld.createButton("NPC ESP Switch: OFF", 28)
-local teamCheckButton = bld.createButton("ESP Team Check: OFF", 29)
+bld.createHeader("ESP Configuration", Color3.fromRGB(255, 100, 100), 27)
+local espToggleButton = bld.createButton("ESP Master Switch: OFF", 28)
+local npcEspToggleButton = bld.createButton("NPC ESP Switch: OFF", 29)
+local teamCheckButton = bld.createButton("ESP Team Check: OFF", 30)
 
-local settingDropdownBtn = bld.createButton("Name and Health Settings v", 30)
+local settingDropdownBtn = bld.createButton("Name and Health Settings v", 31)
 local settingDropFrame = Instance.new("Frame")
-settingDropFrame.Size = UDim2.new(1, 0, 0, 0); settingDropFrame.BackgroundTransparency = 1; settingDropFrame.LayoutOrder = 31; settingDropFrame.Visible = false; settingDropFrame.ZIndex = 13; settingDropFrame.Parent = bld.scrollingFrame
+settingDropFrame.Size = UDim2.new(1, 0, 0, 0); settingDropFrame.BackgroundTransparency = 1; settingDropFrame.LayoutOrder = 32; settingDropFrame.Visible = false; settingDropFrame.ZIndex = 13; settingDropFrame.Parent = bld.scrollingFrame
 
 local settingDropLayout = Instance.new("UIListLayout")
 settingDropLayout.Padding = UDim.new(0, 4); settingDropLayout.SortOrder = Enum.SortOrder.LayoutOrder; settingDropLayout.Parent = settingDropFrame
@@ -783,9 +795,9 @@ end)
 local showNameButton = bld.createButton("Show Name: ON", 1, settingDropFrame)
 local showHealthButton = bld.createButton("Show Health: ON", 2, settingDropFrame)
 
-local teamDropdownBtn = bld.createButton("Team Configuration v", 32)
+local teamDropdownBtn = bld.createButton("Team Configuration v", 33)
 local teamDropFrame = Instance.new("Frame")
-teamDropFrame.Size = UDim2.new(1, 0, 0, 0); teamDropFrame.BackgroundTransparency = 1; teamDropFrame.LayoutOrder = 33; teamDropFrame.Visible = false; teamDropFrame.ZIndex = 13; teamDropFrame.Parent = bld.scrollingFrame
+teamDropFrame.Size = UDim2.new(1, 0, 0, 0); teamDropFrame.BackgroundTransparency = 1; teamDropFrame.LayoutOrder = 34; teamDropFrame.Visible = false; teamDropFrame.ZIndex = 13; teamDropFrame.Parent = bld.scrollingFrame
 
 local teamDropLayout = Instance.new("UIListLayout")
 teamDropLayout.Padding = UDim.new(0, 4); teamDropLayout.SortOrder = Enum.SortOrder.LayoutOrder; teamDropLayout.Parent = teamDropFrame
@@ -896,15 +908,17 @@ sizePresetButton.MouseButton1Click:Connect(function()
 	sizePresetButton.Text = "Hitbox Size: " .. _G.HitboxScaleMode
 end)
 
-espToggleButton.MouseButton1Click:Connect(function()
-	_G.ESPEnabled = not _G.ESPEnabled
-	espToggleButton.Text = "ESP Master Switch: " .. (_G.ESPEnabled and "ON" or "OFF")
-	globalESPUpdate()
-end)
-
-npcEspToggleButton.MouseButton1Click:Connect(function()
-	_G.NPCESPEnabled = not _G.NPCESPEnabled
-	npcEspToggleButton.Text = "NPC ESP Switch: " .. (_G.NPCESPEnabled and "ON" or "OFF")
+-- Main Context Structural Frame Sizing State Cyclic Execution Handler
+frameResizeBtn.MouseButton1Click:Connect(function()
+	if _G.FrameScaleMode == "Medium" then 
+		_G.FrameScaleMode = "Big" 
+	elseif _G.FrameScaleMode == "Big" then 
+		_G.FrameScaleMode = "Small" 
+	else 
+		_G.FrameScaleMode = "Medium" 
+	end
+	frameResizeBtn.Text = "Resize Frame: " .. _G.FrameScaleMode
+	bld.frame.Size = frameSizes[_G.FrameScaleMode]
 end)
 
 npcToggleButton.MouseButton1Click:Connect(function()
