@@ -365,7 +365,8 @@ _G.FlingEngine = {
 		while os.clock() - start < 0.4 do
 			utils.RunService.Heartbeat:Wait()
 			if tRoot and myRoot and not myHum.SeatPart then
-				myRoot.CFrame = tRoot.CFrame + Vector3.new(math.random(-1,1), 0, math.random(-1,1))
+				-- Teleports you directly to the exact center CFrame position of the target player
+				myRoot.CFrame = tRoot.CFrame
 			else break end
 		end
 
@@ -537,6 +538,7 @@ topBar.InputBegan:Connect(function(input)
 		input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
 	end
 end)
+
 topBar.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
 UserInputService.InputChanged:Connect(function(input)
 	if input == dragInput and dragging then
@@ -614,6 +616,7 @@ chatTopBar.InputBegan:Connect(function(input)
 		input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then chatDragging = false end end)
 	end
 end)
+
 chatTopBar.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then chatDragInput = input end end)
 UserInputService.InputChanged:Connect(function(input)
 	if input == chatDragInput and chatDragging then
@@ -816,6 +819,53 @@ settingDropFrame.Visible = false; settingDropFrame.ZIndex = 13; settingDropFrame
 local settingDropLayout = Instance.new("UIListLayout")
 settingDropLayout.Padding = UDim.new(0, 4); settingDropLayout.SortOrder = Enum.SortOrder.LayoutOrder; settingDropLayout.Parent = settingDropFrame
 
+-- Frame Configuration Section
+local frameConfigHeader = Instance.new("Frame")
+frameConfigHeader.Name = "FrameConfigHeader"
+frameConfigHeader.Size = UDim2.new(1, 0, 0, 30)
+frameConfigHeader.BackgroundTransparency = 1
+frameConfigHeader.Parent = scrollCanvas
+
+local frameConfigTitle = Instance.new("TextLabel")
+frameConfigTitle.Size = UDim2.new(1, -10, 1, 0)
+frameConfigTitle.Position = UDim2.new(0, 10, 0, 0)
+frameConfigTitle.BackgroundTransparency = 1
+frameConfigTitle.Text = "Frame Configuration"
+frameConfigTitle.TextColor3 = Color3.fromRGB(240, 240, 240)
+frameConfigTitle.TextSize = 15
+frameConfigTitle.Font = Enum.Font.SourceSansBold
+frameConfigTitle.TextXAlignment = Enum.TextXAlignment.Left
+frameConfigTitle.Parent = frameConfigHeader
+
+local frameConfigDrop = Instance.new("Frame")
+frameConfigDrop.Name = "FrameConfigDrop"
+frameConfigDrop.Size = UDim2.new(1, 0, 0, 45)
+frameConfigDrop.BackgroundTransparency = 1
+frameConfigDrop.Parent = scrollCanvas
+
+-- Relocated Frame Size Selection Row
+local sizeRow = Instance.new("Frame")
+sizeRow.Size = UDim2.new(1, -20, 0, 35)
+sizeRow.Position = UDim2.new(0, 10, 0, 5)
+sizeRow.BackgroundColor3 = Color3.fromRGB(40, 40, 43)
+sizeRow.BorderSizePixel = 0
+sizeRow.Parent = frameConfigDrop
+
+local sizeCorner = Instance.new("UICorner")
+sizeCorner.CornerRadius = UDim.new(0, 6)
+sizeCorner.Parent = sizeRow
+
+local sizeLbl = Instance.new("TextLabel")
+sizeLbl.Size = UDim2.new(0, 120, 1, 0)
+sizeLbl.Position = UDim2.new(0, 10, 0, 0)
+sizeLbl.BackgroundTransparency = 1
+sizeLbl.Text = "Gui Frame Size:"
+sizeLbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+sizeLbl.TextSize = 14
+sizeLbl.Font = Enum.Font.SourceSans
+sizeLbl.TextXAlignment = Enum.TextXAlignment.Left
+sizeLbl.Parent = sizeRow
+
 local showNameButton = bld.createButton("Show Name: ON", 1, settingDropFrame)
 local showHealthButton = bld.createButton("Show Health: ON", 2, settingDropFrame)
 local xrayButton = bld.createButton("X-Ray: OFF", 3, settingDropFrame)
@@ -863,81 +913,145 @@ xrayButton.MouseButton1Click:Connect(function()
 end)
 
 local isJumpscaring = false
-local function updateJumpscareMenu()
+
+-- Helper function to generate rows featuring a left Label and right Action Button
+local function createPlayerRow(parentFrame, displayName, detailedText, orderIndex, actionColor, actionText, actionCallback)
+	local rowFrame = Instance.new("Frame")
+	rowFrame.Size = UDim2.new(1, 0, 0, 34)
+	rowFrame.BackgroundTransparency = 1
+	rowFrame.LayoutOrder = orderIndex
+	rowFrame.ZIndex = 14
+	rowFrame.Parent = parentFrame
+
+	-- Left Side: Player Name / Distance Info Label
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, -70, 1, 0)
+	label.Position = UDim2.new(0, 5, 0, 0)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.Font = Enum.Font.Gotham
+	label.TextSize = 12
+	label.Text = detailedText
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.ZIndex = 14
+	label.Parent = rowFrame
+
+	-- Right Side: Direct Action Execution Button
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(0, 60, 0, 26)
+	btn.Position = UDim2.new(1, -65, 0, 4)
+	btn.BackgroundColor3 = actionColor
+	btn.TextColor3 = Color3.new(1, 1, 1)
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 11
+	btn.Text = actionText
+	btn.ZIndex = 14
+	btn.Parent = rowFrame
+
+	local btnCorner = Instance.new("UICorner")
+	btnCorner.CornerRadius = UDim.new(0, 4)
+	btnCorner.Parent = btn
+
+	btn.MouseButton1Click:Connect(actionCallback)
+end
+
+-- Rebuild function triggered ONLY when structural player changes occur
+local function rebuildPlayerMenus()
+	-- 1. Wipe menus safely down to layouts
 	for _, v in ipairs(jumpscareDropFrame:GetChildren()) do
 		if not v:IsA("UIListLayout") then v:Destroy() end
 	end
-
-	local order = 1
-	for _, plr in ipairs(Players:GetPlayers()) do
-		if plr ~= LocalPlayer then
-			local btn = Instance.new("TextButton")
-			btn.Size = UDim2.new(1,0,0,34); btn.BackgroundColor3 = Color3.fromRGB(80,40,40)
-			btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.GothamBold; btn.TextSize = 12
-			btn.Text = plr.DisplayName .. " (" .. plr.Name .. ")"; btn.LayoutOrder = order; btn.ZIndex = 14; btn.Parent = jumpscareDropFrame
-
-			btn.MouseButton1Click:Connect(function()
-				if isJumpscaring then return end
-				local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-				local targetRoot = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
-
-				if myRoot and targetRoot then
-					isJumpscaring = true
-					local oldCFrame = myRoot.CFrame
-					myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, -3) * CFrame.Angles(0, math.pi, 0)
-					task.wait(0.1)
-					myRoot.CFrame = oldCFrame
-					isJumpscaring = false
-				end
-			end)
-			order += 1
-		end
-	end
-	jumpscareDropFrame.Size = UDim2.new(1, 0, 0, jumpscareLayout.AbsoluteContentSize.Y)
-end
-
-local function updateTeleportMenu()
-	if not teleportDropFrame.Visible then return end
-
 	for _, c in ipairs(teleportDropFrame:GetChildren()) do 
 		if not c:IsA("UIListLayout") then c:Destroy() end 
 	end
 
-	local grouped = {}
 	local orderCount = 1
+	local grouped = {}
 
+	-- Map targets and group by team structure
 	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+		if p ~= LocalPlayer then
+			-- Populate jumpscare frame elements
+			createPlayerRow(
+				jumpscareDropFrame, 
+				p.DisplayName, 
+				p.DisplayName .. " (" .. p.Name .. ")", 
+				orderCount, 
+				Color3.fromRGB(80, 40, 40), 
+				"Jumpscare", 
+				function()
+					if isJumpscaring then return end
+					local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+					local targetRoot = p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+
+					if myRoot and targetRoot then
+						isJumpscaring = true
+						local oldCFrame = myRoot.CFrame
+						myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, -3) * CFrame.Angles(0, math.pi, 0)
+						task.wait(0.1)
+						myRoot.CFrame = oldCFrame
+						isJumpscaring = false
+					end
+				end
+			)
+
 			local teamName = p.Team and p.Team.Name or "Neutral"
 			if not grouped[teamName] then grouped[teamName] = {} end
 			table.insert(grouped[teamName], p)
-		end
-	end
-
-	for teamName, players in pairs(grouped) do
-		local teamHeader = Instance.new("TextLabel")
-		teamHeader.Size = UDim2.new(1, 0, 0, 24); teamHeader.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-		teamHeader.TextColor3 = Color3.fromRGB(255, 255, 100); teamHeader.Font = Enum.Font.GothamBold; teamHeader.TextSize = 11
-		teamHeader.Text = "Team: " .. teamName; teamHeader.LayoutOrder = orderCount; teamHeader.ZIndex = 14; teamHeader.Parent = teleportDropFrame
-		orderCount = orderCount + 1
-
-		for _, p in ipairs(players) do
-			local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude)
-
-			local btn = Instance.new("TextButton")
-			btn.Size = UDim2.new(1, 0, 0, 34); btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-			btn.TextColor3 = Color3.new(1, 1, 1); btn.Font = Enum.Font.Gotham; btn.TextSize = 12
-			btn.Text = p.DisplayName .. " [" .. dist .. " Studs]"; btn.LayoutOrder = orderCount; btn.ZIndex = 14; btn.Parent = teleportDropFrame
-
-			btn.MouseButton1Click:Connect(function()
-				if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-					LocalPlayer.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 0)
-				end
-			end)
 			orderCount = orderCount + 1
 		end
 	end
+
+	-- Populate teleport frame elements grouped by team hierarchy
+	for teamName, players in pairs(grouped) do
+		local teamHeader = Instance.new("TextLabel")
+		teamHeader.Size = UDim2.new(1, 0, 0, 24)
+		teamHeader.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+		teamHeader.TextColor3 = Color3.fromRGB(255, 255, 100)
+		teamHeader.Font = Enum.Font.GothamBold
+		teamHeader.TextSize = 11
+		teamHeader.Text = "Team: " .. teamName
+		teamHeader.LayoutOrder = orderCount
+		teamHeader.ZIndex = 14
+		teamHeader.Parent = teleportDropFrame
+		orderCount = orderCount + 1
+
+		for _, p in ipairs(players) do
+			-- Dynamic calculation fallback check
+			local distText = "[Calculating...]"
+			if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+				local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude)
+				distText = "[" .. dist .. " Studs]"
+			end
+
+			createPlayerRow(
+				teleportDropFrame,
+				p.DisplayName,
+				p.DisplayName .. " " .. distText,
+				orderCount,
+				Color3.fromRGB(50, 50, 50),
+				"Teleport",
+				function()
+					if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+						LocalPlayer.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 0)
+					end
+				end
+			)
+			orderCount = orderCount + 1
+		end
+	end
+
+	-- Automatically correct layout canvas sizing constraints instantly
+	jumpscareDropFrame.Size = UDim2.new(1, 0, 0, jumpscareLayout.AbsoluteContentSize.Y)
+	teleportDropFrame.Size = UDim2.new(1, 0, 0, teleportDropLayout.AbsoluteContentSize.Y)
 end
+
+-- OPTIMIZATION FIXED: Bind ONLY to join/leave signals so the menus don't lag or wipe selections mid-game
+Players.PlayerAdded:Connect(rebuildPlayerMenus)
+Players.PlayerRemoving:Connect(rebuildPlayerMenus)
+
+-- Force initial layout generation once upon execution startup
+task.spawn(rebuildPlayerMenus)
 
 local function globalESPUpdate()
 	for _, p in ipairs(Players:GetPlayers()) do
