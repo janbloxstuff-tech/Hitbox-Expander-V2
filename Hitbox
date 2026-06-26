@@ -914,7 +914,7 @@ local function createPlayerRow(parentFrame, displayName, detailedText, orderInde
 
 	-- Left Side: Player Name / Distance Info Label
 	local label = Instance.new("TextLabel")
-	label.Name = "PlayerDistLabel" -- Named specifically so the loop thread can target it later
+	label.Name = "PlayerDistLabel" -- Targeted by loop worker threads below
 	label.Size = UDim2.new(1, -70, 1, 0)
 	label.Position = UDim2.new(0, 5, 0, 0)
 	label.BackgroundTransparency = 1
@@ -945,9 +945,9 @@ local function createPlayerRow(parentFrame, displayName, detailedText, orderInde
 	btn.MouseButton1Click:Connect(actionCallback)
 end
 
--- Rebuild function triggered ONLY when structural player changes occur
+-- Rebuild function triggered ONLY when server player structural changes occur
 local function rebuildPlayerMenus()
-	-- 1. Wipe menus safely down to layouts
+	-- Wipe list layout instances cleanly without dropping UI metadata attachments
 	for _, v in ipairs(jumpscareDropFrame:GetChildren()) do
 		if not v:IsA("UIListLayout") then v:Destroy() end
 	end
@@ -958,10 +958,10 @@ local function rebuildPlayerMenus()
 	local orderCount = 1
 	local grouped = {}
 
-	-- Map targets and group by team structure
+	-- Map active structural tracking nodes across current network collection profiles
 	for _, p in ipairs(Players:GetPlayers()) do
 		if p ~= LocalPlayer then
-			-- Populate jumpscare frame elements
+			-- Populate jumpscare targets safely
 			createPlayerRow(
 				jumpscareDropFrame, 
 				p.DisplayName, 
@@ -992,7 +992,7 @@ local function rebuildPlayerMenus()
 		end
 	end
 
-	-- Populate teleport frame elements grouped by team hierarchy
+	-- Build grouping configurations matching regional filters
 	for teamName, players in pairs(grouped) do
 		local teamHeader = Instance.new("TextLabel")
 		teamHeader.Size = UDim2.new(1, 0, 0, 24)
@@ -1026,8 +1026,10 @@ local function rebuildPlayerMenus()
 					end
 				end
 			)
-			-- Attach a reference tag attributes block so the background loop can accurately find its associated player
-			local lastChild = teleportDropFrame:GetChildren()[#teleportDropFrame:GetChildren()]
+
+			-- Attach safe tracker tags for the background thread loops
+			local children = teleportDropFrame:GetChildren()
+			local lastChild = children[#children]
 			if lastChild and lastChild:IsA("Frame") then
 				lastChild:SetAttribute("TargetPlayer", p.Name)
 				lastChild:SetAttribute("BaseName", p.DisplayName)
@@ -1036,15 +1038,15 @@ local function rebuildPlayerMenus()
 		end
 	end
 
-	-- Automatically correct current open canvas height structures instantly matching visibility states
+	-- Force layout height recalculations on the active canvas instances
 	jumpscareDropFrame.Size = UDim2.new(1, 0, 0, jumpscareDropFrame.Visible and jumpscareLayout.AbsoluteContentSize.Y or 0)
 	teleportDropFrame.Size = UDim2.new(1, 0, 0, teleportDropFrame.Visible and teleportDropLayout.AbsoluteContentSize.Y or 0)
 end
 
--- FIX 1: Lightweight background tracking loop that updates only Stud labels without recalculating/wiping rows
+-- BACKGROUND WORKER: Updates active distance nodes seamlessly without interfering with your core configuration loops
 task.spawn(function()
 	while true do
-		task.wait(1) -- Refreshes distances safely once per second
+		task.wait(0.5) -- High-performance responsive updates
 		if teleportDropFrame.Visible and LocalPlayer.Character then
 			local myRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 			if myRoot then
@@ -1070,6 +1072,71 @@ task.spawn(function()
 		end
 	end
 end)
+
+-- ACCURATE INTERACTION HOOKS: Ensures items push everything below them out of the way properly!
+teleportDropdownBtn.MouseButton1Click:Connect(function()
+	teleportDropFrame.Visible = not teleportDropFrame.Visible
+	teleportDropdownBtn.Text = teleportDropFrame.Visible and "Teleport Controls ^" or "Teleport Controls v"
+
+	if teleportDropFrame.Visible then
+		jumpscareDropFrame.Visible = false
+		if typeof(teamDropFrame) ~= "nil" then teamDropFrame.Visible = false end
+		jumpscareDropdownBtn.Text = "Jumpscare Players v"
+		if typeof(teamDropdownBtn) ~= "nil" then teamDropdownBtn.Text = "Team Configuration v" end
+		
+		jumpscareDropFrame.Size = UDim2.new(1, 0, 0, 0)
+		if typeof(teamDropFrame) ~= "nil" then teamDropFrame.Size = UDim2.new(1, 0, 0, 0) end
+		teleportDropFrame.Size = UDim2.new(1, 0, 0, teleportDropLayout.AbsoluteContentSize.Y)
+	else
+		teleportDropFrame.Size = UDim2.new(1, 0, 0, 0)
+	end
+end)
+
+jumpscareDropdownBtn.MouseButton1Click:Connect(function()
+	jumpscareDropFrame.Visible = not jumpscareDropFrame.Visible
+	jumpscareDropdownBtn.Text = jumpscareDropFrame.Visible and "Jumpscare Players ^" or "Jumpscare Players v"
+
+	if jumpscareDropFrame.Visible then
+		teleportDropFrame.Visible = false
+		if typeof(teamDropFrame) ~= "nil" then teamDropFrame.Visible = false end
+		teleportDropdownBtn.Text = "Teleport Controls v"
+		if typeof(teamDropdownBtn) ~= "nil" then teamDropdownBtn.Text = "Team Configuration v" end
+		
+		teleportDropFrame.Size = UDim2.new(1, 0, 0, 0)
+		if typeof(teamDropFrame) ~= "nil" then teamDropFrame.Size = UDim2.new(1, 0, 0, 0) end
+		jumpscareDropFrame.Size = UDim2.new(1, 0, 0, jumpscareLayout.AbsoluteContentSize.Y)
+	else
+		jumpscareDropFrame.Size = UDim2.new(1, 0, 0, 0)
+	end
+end)
+
+if typeof(teamDropdownBtn) ~= "nil" and typeof(teamDropFrame) ~= "nil" then
+	teamDropdownBtn.MouseButton1Click:Connect(function()
+		teamDropFrame.Visible = not teamDropFrame.Visible
+		teamDropdownBtn.Text = teamDropFrame.Visible and "Team Configuration ^" or "Team Configuration v"
+
+		if teamDropFrame.Visible then
+			teleportDropFrame.Visible = false
+			jumpscareDropFrame.Visible = false
+			teleportDropdownBtn.Text = "Teleport Controls v"
+			jumpscareDropdownBtn.Text = "Jumpscare Players v"
+			
+			teleportDropFrame.Size = UDim2.new(1, 0, 0, 0)
+			jumpscareDropFrame.Size = UDim2.new(1, 0, 0, 0)
+			if typeof(refreshTeamDropdown) == "function" then refreshTeamDropdown() end
+			teamDropFrame.Size = UDim2.new(1, 0, 0, teamDropLayout.AbsoluteContentSize.Y)
+		else
+			teamDropFrame.Size = UDim2.new(1, 0, 0, 0)
+		end
+	end)
+end
+
+-- Network connections
+Players.PlayerAdded:Connect(rebuildPlayerMenus)
+Players.PlayerRemoving:Connect(rebuildPlayerMenus)
+
+-- Core boot
+task.spawn(rebuildPlayerMenus)
 
 local function globalESPUpdate()
 	for _, p in ipairs(Players:GetPlayers()) do
@@ -1131,69 +1198,6 @@ local function refreshTeamDropdown()
 		end
 	end
 end
-
--- FIX 2: Corrected Dropdown event listening routines to guarantee UI elements slide down and resize safely
-teleportDropdownBtn.MouseButton1Click:Connect(function()
-	teleportDropFrame.Visible = not teleportDropFrame.Visible
-	teleportDropdownBtn.Text = teleportDropFrame.Visible and "Teleport Controls ^" or "Teleport Controls v"
-
-	if teleportDropFrame.Visible then
-		jumpscareDropFrame.Visible = false
-		teamDropFrame.Visible = false
-		jumpscareDropdownBtn.Text = "Jumpscare Players v"
-		teamDropdownBtn.Text = "Team Configuration v"
-		jumpscareDropFrame.Size = UDim2.new(1, 0, 0, 0)
-		teamDropFrame.Size = UDim2.new(1, 0, 0, 0)
-		-- Calculate and open with proper layout bounds size
-		teleportDropFrame.Size = UDim2.new(1, 0, 0, teleportDropLayout.AbsoluteContentSize.Y)
-	else
-		teleportDropFrame.Size = UDim2.new(1, 0, 0, 0)
-	end
-end)
-
-jumpscareDropdownBtn.MouseButton1Click:Connect(function()
-	jumpscareDropFrame.Visible = not jumpscareDropFrame.Visible
-	jumpscareDropdownBtn.Text = jumpscareDropFrame.Visible and "Jumpscare Players ^" or "Jumpscare Players v"
-
-	if jumpscareDropFrame.Visible then
-		teleportDropFrame.Visible = false
-		teamDropFrame.Visible = false
-		teleportDropdownBtn.Text = "Teleport Controls v"
-		teamDropdownBtn.Text = "Team Configuration v"
-		teleportDropFrame.Size = UDim2.new(1, 0, 0, 0)
-		teamDropFrame.Size = UDim2.new(1, 0, 0, 0)
-		-- Calculate and open with proper layout bounds size
-		jumpscareDropFrame.Size = UDim2.new(1, 0, 0, jumpscareLayout.AbsoluteContentSize.Y)
-	else
-		jumpscareDropFrame.Size = UDim2.new(1, 0, 0, 0)
-	end
-end)
-
-teamDropdownBtn.MouseButton1Click:Connect(function()
-	teamDropFrame.Visible = not teamDropFrame.Visible
-	teamDropdownBtn.Text = teamDropFrame.Visible and "Team Configuration ^" or "Team Configuration v"
-
-	if teamDropFrame.Visible then
-		teleportDropFrame.Visible = false
-		jumpscareDropFrame.Visible = false
-		teleportDropdownBtn.Text = "Teleport Controls v"
-		jumpscareDropdownBtn.Text = "Jumpscare Players v"
-		teleportDropFrame.Size = UDim2.new(1, 0, 0, 0)
-		jumpscareDropFrame.Size = UDim2.new(1, 0, 0, 0)
-		refreshTeamDropdown()
-		-- Calculate and open with proper layout bounds size
-		teamDropFrame.Size = UDim2.new(1, 0, 0, teamDropLayout.AbsoluteContentSize.Y)
-	else
-		teamDropFrame.Size = UDim2.new(1, 0, 0, 0)
-	end
-end)
-
--- Bind strictly to connection join/leave changes to keep interface fast and optimized
-Players.PlayerAdded:Connect(rebuildPlayerMenus)
-Players.PlayerRemoving:Connect(rebuildPlayerMenus)
-
--- Run once upon startup
-task.spawn(rebuildPlayerMenus)
 
 settingDropdownBtn.MouseButton1Click:Connect(function()
 	settingDropFrame.Visible = not settingDropFrame.Visible
