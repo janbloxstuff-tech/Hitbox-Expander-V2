@@ -347,6 +347,20 @@ _G.FlingEngine = {
 		bV.Velocity = Vector3.new(99999, 99999, 99999)
 		bV.Parent = myRoot
 
+		_G.FlingNoclip = true
+		local noclipConnection
+		noclipConnection = utils.RunService.Stepped:Connect(function()
+			if _G.FlingNoclip and myChar then
+				for _, part in ipairs(myChar:GetDescendants()) do
+					if part:IsA("BasePart") then
+						part.CanCollide = false
+					end
+				end
+			else
+				if noclipConnection then noclipConnection:Disconnect() end
+			end
+		end)
+
 		local start = os.clock()
 		while os.clock() - start < 0.4 do
 			utils.RunService.Heartbeat:Wait()
@@ -355,6 +369,9 @@ _G.FlingEngine = {
 			else break end
 		end
 
+		_G.FlingNoclip = false
+		if noclipConnection then noclipConnection:Disconnect() end
+		
 		bV:Destroy()
 		myRoot.AssemblyLinearVelocity = oldV
 		myRoot.CFrame = oldC
@@ -407,6 +424,8 @@ local originalProps, npcHitboxes = _G.OriginalProps, _G.NpcHitboxes
 _G.Pipeline = {
 	applyToPlayer = function(player)
 		if not player or not player.Character or player == utils.LocalPlayer then return end
+		
+		-- Strict check to remove hitbox if mechanics conditions aren't met
 		if not mech.shouldApplyHitbox(player) then
 			if originalProps[player] then mech.restorePlayer(player) end
 			return
@@ -414,6 +433,13 @@ _G.Pipeline = {
 
 		local char = player.Character
 		local hum = char:FindFirstChildOfClass("Humanoid")
+		
+		-- Pre-rendering validation: Kill the hitbox immediately if they die or gain a forcefield to stop flickering
+		if not hum or hum.Health <= 0 or (_G.CheckForcefield and char:FindFirstChildOfClass("ForceField")) then
+			if originalProps[player] then mech.restorePlayer(player) end
+			return
+		end
+
 		local isSitting = (hum and hum.SeatPart and (hum.SeatPart:IsA("VehicleSeat") or hum.SeatPart:IsA("Seat")))
 		pcall(function()
 			local actualTarget = isSitting and "Head" or _G.TargetPart
@@ -429,17 +455,23 @@ _G.Pipeline = {
 			utils.safeSetProperty(part, "CanCollide", false)
 			utils.safeSetProperty(part, "CanTouch", true)
 
+			-- Forces Massless to true for all rig types when the target part becomes the Head (such as when sitting)
 			if part.Name == "Head" then 
-				if hum and hum.RigType == Enum.HumanoidRigType.R6 then
-					utils.safeSetProperty(part, "Massless", false)
-				else
-					utils.safeSetProperty(part, "Massless", true)
-				end
+				utils.safeSetProperty(part, "Massless", true)
 			end
 		end)
 	end,
+	
 	applyToNPC = function(npc)
 		if not npc then return end
+		
+		local hum = npc:FindFirstChildOfClass("Humanoid")
+		-- Mirror check for NPCs: Instantly clear and clean up dead monster hitboxes so they don't flicker on death
+		if not hum or hum.Health <= 0 then
+			mech.restoreNPC(npc)
+			return
+		end
+
 		pcall(function()
 			local part = npc:FindFirstChild("Head")
 			if not part or not part:IsA("BasePart") then return end
@@ -452,12 +484,8 @@ _G.Pipeline = {
 			utils.safeSetProperty(part, "CanCollide", false)
 			utils.safeSetProperty(part, "CanTouch", true)
 
-			local hum = npc:FindFirstChildOfClass("Humanoid")
-			if hum and hum.RigType == Enum.HumanoidRigType.R6 then
-				utils.safeSetProperty(part, "Massless", false)
-			else
-				utils.safeSetProperty(part, "Massless", true)
-			end
+			-- Unified consistency: NPCs always receive Massless = true to prevent physics issues
+			utils.safeSetProperty(part, "Massless", true)
 		end)
 	end
 }
