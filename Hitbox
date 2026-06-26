@@ -687,7 +687,7 @@ end
 
 _G.UIBuilders = { createHeader = createHeader, createButton = createButton, createTrackerRow = createTrackerRow, scrollingFrame = scrollingFrame, frame = frame }
 
-- PART 6: Interactivity Listeners, Teleport Logic, and Advanced Control Loops
+-- PART 6: Interactivity Listeners, Teleport Logic, and Advanced Control Loops
 local utils = _G.CoreUtils
 local mech = _G.Mechanics
 local graphics = _G.GraphicsEngine
@@ -1288,4 +1288,3 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 		if hum then poseToggleButton.Text = getRigTypeLabel() end
 	end)
 end)
-
