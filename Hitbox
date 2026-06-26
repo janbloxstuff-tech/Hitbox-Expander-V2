@@ -425,8 +425,6 @@ local originalProps, npcHitboxes = _G.OriginalProps, _G.NpcHitboxes
 _G.Pipeline = {
 	applyToPlayer = function(player)
 		if not player or not player.Character or player == utils.LocalPlayer then return end
-		
-		-- Strict check to remove hitbox if mechanics conditions aren't met
 		if not mech.shouldApplyHitbox(player) then
 			if originalProps[player] then mech.restorePlayer(player) end
 			return
@@ -434,13 +432,6 @@ _G.Pipeline = {
 
 		local char = player.Character
 		local hum = char:FindFirstChildOfClass("Humanoid")
-		
-		-- Pre-rendering validation: Kill the hitbox immediately if they die or gain a forcefield to stop flickering
-		if not hum or hum.Health <= 0 or (_G.CheckForcefield and char:FindFirstChildOfClass("ForceField")) then
-			if originalProps[player] then mech.restorePlayer(player) end
-			return
-		end
-
 		local isSitting = (hum and hum.SeatPart and (hum.SeatPart:IsA("VehicleSeat") or hum.SeatPart:IsA("Seat")))
 		pcall(function()
 			local actualTarget = isSitting and "Head" or _G.TargetPart
@@ -456,23 +447,17 @@ _G.Pipeline = {
 			utils.safeSetProperty(part, "CanCollide", false)
 			utils.safeSetProperty(part, "CanTouch", true)
 
-			-- Forces Massless to true for all rig types when the target part becomes the Head (such as when sitting)
 			if part.Name == "Head" then 
-				utils.safeSetProperty(part, "Massless", true)
+				if hum and hum.RigType == Enum.HumanoidRigType.R6 then
+					utils.safeSetProperty(part, "Massless", false)
+				else
+					utils.safeSetProperty(part, "Massless", true)
+				end
 			end
 		end)
 	end,
-	
 	applyToNPC = function(npc)
 		if not npc then return end
-		
-		local hum = npc:FindFirstChildOfClass("Humanoid")
-		-- Mirror check for NPCs: Instantly clear and clean up dead monster hitboxes so they don't flicker on death
-		if not hum or hum.Health <= 0 then
-			mech.restoreNPC(npc)
-			return
-		end
-
 		pcall(function()
 			local part = npc:FindFirstChild("Head")
 			if not part or not part:IsA("BasePart") then return end
@@ -485,8 +470,12 @@ _G.Pipeline = {
 			utils.safeSetProperty(part, "CanCollide", false)
 			utils.safeSetProperty(part, "CanTouch", true)
 
-			-- Unified consistency: NPCs always receive Massless = true to prevent physics issues
-			utils.safeSetProperty(part, "Massless", true)
+			local hum = npc:FindFirstChildOfClass("Humanoid")
+			if hum and hum.RigType == Enum.HumanoidRigType.R6 then
+				utils.safeSetProperty(part, "Massless", false)
+			else
+				utils.safeSetProperty(part, "Massless", true)
+			end
 		end)
 	end
 }
@@ -925,6 +914,7 @@ local function createPlayerRow(parentFrame, displayName, detailedText, orderInde
 
 	-- Left Side: Player Name / Distance Info Label
 	local label = Instance.new("TextLabel")
+	label.Name = "PlayerDistLabel" -- Named specifically so the loop thread can target it later
 	label.Size = UDim2.new(1, -70, 1, 0)
 	label.Position = UDim2.new(0, 5, 0, 0)
 	label.BackgroundTransparency = 1
@@ -1017,7 +1007,6 @@ local function rebuildPlayerMenus()
 		orderCount = orderCount + 1
 
 		for _, p in ipairs(players) do
-			-- Dynamic calculation fallback check
 			local distText = "[Calculating...]"
 			if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
 				local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude)
@@ -1037,21 +1026,50 @@ local function rebuildPlayerMenus()
 					end
 				end
 			)
+			-- Attach a reference tag attributes block so the background loop can accurately find its associated player
+			local lastChild = teleportDropFrame:GetChildren()[#teleportDropFrame:GetChildren()]
+			if lastChild and lastChild:IsA("Frame") then
+				lastChild:SetAttribute("TargetPlayer", p.Name)
+				lastChild:SetAttribute("BaseName", p.DisplayName)
+			end
 			orderCount = orderCount + 1
 		end
 	end
 
-	-- Automatically correct layout canvas sizing constraints instantly
-	jumpscareDropFrame.Size = UDim2.new(1, 0, 0, jumpscareLayout.AbsoluteContentSize.Y)
-	teleportDropFrame.Size = UDim2.new(1, 0, 0, teleportDropLayout.AbsoluteContentSize.Y)
+	-- Automatically correct current open canvas height structures instantly matching visibility states
+	jumpscareDropFrame.Size = UDim2.new(1, 0, 0, jumpscareDropFrame.Visible and jumpscareLayout.AbsoluteContentSize.Y or 0)
+	teleportDropFrame.Size = UDim2.new(1, 0, 0, teleportDropFrame.Visible and teleportDropLayout.AbsoluteContentSize.Y or 0)
 end
 
--- OPTIMIZATION FIXED: Bind ONLY to join/leave signals so the menus don't lag or wipe selections mid-game
-Players.PlayerAdded:Connect(rebuildPlayerMenus)
-Players.PlayerRemoving:Connect(rebuildPlayerMenus)
-
--- Force initial layout generation once upon execution startup
-task.spawn(rebuildPlayerMenus)
+-- FIX 1: Lightweight background tracking loop that updates only Stud labels without recalculating/wiping rows
+task.spawn(function()
+	while true do
+		task.wait(1) -- Refreshes distances safely once per second
+		if teleportDropFrame.Visible and LocalPlayer.Character then
+			local myRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+			if myRoot then
+				for _, row in ipairs(teleportDropFrame:GetChildren()) do
+					if row:IsA("Frame") and row:GetAttribute("TargetPlayer") then
+						local targetName = row:GetAttribute("TargetPlayer")
+						local baseName = row:GetAttribute("BaseName")
+						local targetPlayer = Players:FindFirstChild(targetName)
+						local label = row:FindFirstChild("PlayerDistLabel")
+						
+						if targetPlayer and targetPlayer.Character and label then
+							local tRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+							if tRoot then
+								local dist = math.floor((myRoot.Position - tRoot.Position).Magnitude)
+								label.Text = baseName .. " [" .. dist .. " Studs]"
+							else
+								label.Text = baseName .. " [Dead/Missing]"
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+end)
 
 local function globalESPUpdate()
 	for _, p in ipairs(Players:GetPlayers()) do
@@ -1114,7 +1132,7 @@ local function refreshTeamDropdown()
 	end
 end
 
--- DROPDOWN CONTROLLERS (Corrected Visibility Handling to Eliminate Empty Padding Spacing)
+-- FIX 2: Corrected Dropdown event listening routines to guarantee UI elements slide down and resize safely
 teleportDropdownBtn.MouseButton1Click:Connect(function()
 	teleportDropFrame.Visible = not teleportDropFrame.Visible
 	teleportDropdownBtn.Text = teleportDropFrame.Visible and "Teleport Controls ^" or "Teleport Controls v"
@@ -1126,8 +1144,7 @@ teleportDropdownBtn.MouseButton1Click:Connect(function()
 		teamDropdownBtn.Text = "Team Configuration v"
 		jumpscareDropFrame.Size = UDim2.new(1, 0, 0, 0)
 		teamDropFrame.Size = UDim2.new(1, 0, 0, 0)
-		updateTeleportMenu()
-		-- Dynamically size this frame open
+		-- Calculate and open with proper layout bounds size
 		teleportDropFrame.Size = UDim2.new(1, 0, 0, teleportDropLayout.AbsoluteContentSize.Y)
 	else
 		teleportDropFrame.Size = UDim2.new(1, 0, 0, 0)
@@ -1145,8 +1162,7 @@ jumpscareDropdownBtn.MouseButton1Click:Connect(function()
 		teamDropdownBtn.Text = "Team Configuration v"
 		teleportDropFrame.Size = UDim2.new(1, 0, 0, 0)
 		teamDropFrame.Size = UDim2.new(1, 0, 0, 0)
-		updateJumpscareMenu()
-		-- Dynamically size this frame open
+		-- Calculate and open with proper layout bounds size
 		jumpscareDropFrame.Size = UDim2.new(1, 0, 0, jumpscareLayout.AbsoluteContentSize.Y)
 	else
 		jumpscareDropFrame.Size = UDim2.new(1, 0, 0, 0)
@@ -1165,12 +1181,19 @@ teamDropdownBtn.MouseButton1Click:Connect(function()
 		teleportDropFrame.Size = UDim2.new(1, 0, 0, 0)
 		jumpscareDropFrame.Size = UDim2.new(1, 0, 0, 0)
 		refreshTeamDropdown()
-		-- Dynamically size this frame open
+		-- Calculate and open with proper layout bounds size
 		teamDropFrame.Size = UDim2.new(1, 0, 0, teamDropLayout.AbsoluteContentSize.Y)
 	else
 		teamDropFrame.Size = UDim2.new(1, 0, 0, 0)
 	end
 end)
+
+-- Bind strictly to connection join/leave changes to keep interface fast and optimized
+Players.PlayerAdded:Connect(rebuildPlayerMenus)
+Players.PlayerRemoving:Connect(rebuildPlayerMenus)
+
+-- Run once upon startup
+task.spawn(rebuildPlayerMenus)
 
 settingDropdownBtn.MouseButton1Click:Connect(function()
 	settingDropFrame.Visible = not settingDropFrame.Visible
