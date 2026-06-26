@@ -687,7 +687,7 @@ end
 
 _G.UIBuilders = { createHeader = createHeader, createButton = createButton, createTrackerRow = createTrackerRow, scrollingFrame = scrollingFrame, frame = frame }
 
-- PART 6: Interactivity Listeners, Teleport Logic, and Advanced Control Loops
+-- PART 6: Interactivity Listeners, Teleport Logic, and Advanced Control Loops
 local utils = _G.CoreUtils
 local mech = _G.Mechanics
 local graphics = _G.GraphicsEngine
@@ -935,136 +935,6 @@ local function globalESPUpdate()
 		end
 	end
 end
-
-local function refreshTeamDropdown()
-	for _, c in ipairs(teamDropFrame:GetChildren()) do if not c:IsA("UIListLayout") then c:Destroy() end end
-
-	local currentTeamLabel = Instance.new("TextLabel")
-	currentTeamLabel.Size = UDim2.new(1,0,0,25); currentTeamLabel.BackgroundColor3 = Color3.fromRGB(35,35,35)
-	currentTeamLabel.TextColor3 = Color3.fromRGB(100,255,100); currentTeamLabel.Font = Enum.Font.GothamBold; currentTeamLabel.TextSize = 12
-	currentTeamLabel.Text = "Current Team: " .. (LocalPlayer.Team and LocalPlayer.Team.Name or "Neutral"); currentTeamLabel.Parent = teamDropFrame
-
-	local allTeams = Teams:GetTeams()
-	table.sort(allTeams, function(a, b)
-		if LocalPlayer.Team == a then return true elseif LocalPlayer.Team == b then return false end
-		return a.Name < b.Name
-	end)
-
-	if #allTeams == 0 then
-		local lbl = Instance.new("TextLabel")
-		lbl.Size = UDim2.new(1, 0, 0, 30); lbl.BackgroundTransparency = 1; lbl.Text = "No Teams Found"; lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
-		lbl.Font = Enum.Font.GothamItalic; lbl.TextSize = 12; lbl.ZIndex = 14; lbl.Parent = teamDropFrame
-	else
-		for idx, team in ipairs(allTeams) do
-			if not _G.TeamCheck or team ~= LocalPlayer.Team then
-				local teamName = team.Name
-				local isOff = _G.DisabledTeams[teamName] or false
-				local tBtn = bld.createButton("Team ["..teamName.."]: "..(isOff and "OFF" or "ON"), idx + 1, teamDropFrame)
-				tBtn.BackgroundColor3 = team.TeamColor.Color
-				tBtn.ZIndex = 15
-				tBtn.MouseButton1Click:Connect(function()
-					_G.DisabledTeams[teamName] = not _G.DisabledTeams[teamName]
-					tBtn.Text = "Team ["..teamName.."]: "..(_G.DisabledTeams[teamName] and "OFF" or "ON")
-					globalESPUpdate()
-				end)
-			end
-		end
-	end
-end
-
--- DROPDOWN CONTROLLERS (Corrected Visibility Handling to Eliminate Empty Padding Spacing)
-teleportDropdownBtn.MouseButton1Click:Connect(function()
-	teleportDropFrame.Visible = not teleportDropFrame.Visible
-	teleportDropdownBtn.Text = teleportDropFrame.Visible and "Teleport Controls ^" or "Teleport Controls v"
-
-	if teleportDropFrame.Visible then
-		jumpscareDropFrame.Visible = false
-		teamDropFrame.Visible = false
-		jumpscareDropdownBtn.Text = "Jumpscare Players v"
-		teamDropdownBtn.Text = "Team Configuration v"
-		jumpscareDropFrame.Size = UDim2.new(1, 0, 0, 0)
-		teamDropFrame.Size = UDim2.new(1, 0, 0, 0)
-		updateTeleportMenu()
-	else
-		teleportDropFrame.Size = UDim2.new(1, 0, 0, 0)
-	end
-end)
-
-jumpscareDropdownBtn.MouseButton1Click:Connect(function()
-	jumpscareDropFrame.Visible = not jumpscareDropFrame.Visible
-	jumpscareDropdownBtn.Text = jumpscareDropFrame.Visible and "Jumpscare Players ^" or "Jumpscare Players v"
-
-	if jumpscareDropFrame.Visible then
-		teleportDropFrame.Visible = false
-		teamDropFrame.Visible = false
-		teleportDropdownBtn.Text = "Teleport Controls v"
-		teamDropdownBtn.Text = "Team Configuration v"
-		teleportDropFrame.Size = UDim2.new(1, 0, 0, 0)
-		teamDropFrame.Size = UDim2.new(1, 0, 0, 0)
-		updateJumpscareMenu()
-	else
-		jumpscareDropFrame.Size = UDim2.new(1, 0, 0, 0)
-	end
-end)
-
-teamDropdownBtn.MouseButton1Click:Connect(function()
-	teamDropFrame.Visible = not teamDropFrame.Visible
-	teamDropdownBtn.Text = teamDropFrame.Visible and "Team Configuration ^" or "Team Configuration v"
-
-	if teamDropFrame.Visible then
-		teleportDropFrame.Visible = false
-		jumpscareDropFrame.Visible = false
-		teleportDropdownBtn.Text = "Teleport Controls v"
-		jumpscareDropdownBtn.Text = "Jumpscare Players v"
-		teleportDropFrame.Size = UDim2.new(1, 0, 0, 0)
-		jumpscareDropFrame.Size = UDim2.new(1, 0, 0, 0)
-		refreshTeamDropdown()
-	else
-		teamDropFrame.Size = UDim2.new(1, 0, 0, 0)
-	end
-end)
-
-settingDropdownBtn.MouseButton1Click:Connect(function()
-	settingDropFrame.Visible = not settingDropFrame.Visible
-	settingDropdownBtn.Text = settingDropFrame.Visible and "Configure Side Settings ^" or "Configure Side Settings v"
-	if not settingDropFrame.Visible then settingDropFrame.Size = UDim2.new(1, 0, 0, 0) end
-end)
-
-workspace.DescendantAdded:Connect(function(desc)
-	if _G.XRayEnabled and desc:IsA("BasePart") then
-		if not desc:IsDescendantOf(LocalPlayer.Character) and not game.Players:GetPlayerFromCharacter(desc.Parent) then
-			task.wait(0.1) 
-			if not xrayCache[desc] then xrayCache[desc] = desc.Transparency end
-			desc.Transparency = 0.5
-		end
-	end
-end)
-
-local function updateTeamMenu()
-	if teamDropFrame.Visible then refreshTeamDropdown() end
-	globalESPUpdate()
-end
-
-LocalPlayer:GetPropertyChangedSignal("Team"):Connect(function()
-	task.wait(0.1)
-	updateTeamMenu()
-end)
-
-local function handleHitboxToggle()
-	_G.Disabled = not _G.Disabled
-	toggleButton.Text = "Toggle Hitbox: " .. (_G.Disabled and "ON" or "OFF")
-	if not _G.Disabled then mech.restoreAll() mech.restoreAllNPCs() end
-end
-
-toggleButton.MouseButton1Click:Connect(handleHitboxToggle)
-
-UserInputService.InputBegan:Connect(function(input, processed)
-	if not processed and input.KeyCode == Enum.KeyCode.L then handleHitboxToggle() end
-end)
-
-forcefieldCheckButton.MouseButton1Click:Connect(function()
-	_G.CheckForcefield = not _G.CheckForcefield; forcefieldCheckButton.Text = "Check Forcefield: " .. (_G.CheckForcefield and "ON" or "OFF")
-end)
 
 teamCheckButton.MouseButton1Click:Connect(function()
 	_G.TeamCheck = not _G.TeamCheck
