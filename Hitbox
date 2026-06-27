@@ -996,24 +996,24 @@ local function updateTeleportMenu()
 			playerRowContainer.ZIndex = 14
 			playerRowContainer.Parent = teleportDropFrame
 
-			-- Left Side: Player Label showing Name and Distance
+			-- Left Side Label: Cleanly sized down to TextSize = 11 with TextScaled fallback option disabled
 			local playerLabel = Instance.new("TextLabel")
 			playerLabel.Size = UDim2.new(0.5, -5, 1, 0)
 			playerLabel.BackgroundTransparency = 1
-			playerLabel.Text = "  " .. p.DisplayName .. " [" .. dist .. "s]"
+			playerLabel.Text = "  " .. p.DisplayName .. " [" .. dist .. " Studs]" -- Cleanly formatted name and studs label
 			playerLabel.TextColor3 = Color3.new(1, 1, 1)
 			playerLabel.Font = Enum.Font.Gotham
-			playerLabel.TextSize = 12
+			playerLabel.TextSize = 11 -- Resized lower text size to perfectly fit player info
 			playerLabel.TextXAlignment = Enum.TextXAlignment.Left
 			playerLabel.ZIndex = 15
 			playerLabel.Parent = playerRowContainer
 
-			-- Right Side: The Teleport Action Button
+			-- Right Side: The Teleport Action Button mapped to the right side
 			local tpActionBtn = Instance.new("TextButton")
 			tpActionBtn.Size = UDim2.new(0.5, 0, 1, 0)
 			tpActionBtn.Position = UDim2.new(0.5, 0, 0, 0)
 			tpActionBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-			tpActionBtn.TextColor3 = Color3.fromRGB(150, 255, 150) -- Colored green for clarity
+			tpActionBtn.TextColor3 = Color3.fromRGB(150, 255, 150) -- Vibrant green
 			tpActionBtn.Font = Enum.Font.GothamBold
 			tpActionBtn.TextSize = 12
 			tpActionBtn.Text = "Teleport"
