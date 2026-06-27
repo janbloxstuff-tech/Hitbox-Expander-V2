@@ -737,6 +737,7 @@ local rtMin, rtPls, rtDisp = bld.createTrackerRow("RootPart Size Adjuster", tost
 local trMin, trPls, trDisp = bld.createTrackerRow("Hitbox Transparency", string.format("%.1f", _G.HitboxTransparency), 11)
 
 bld.createHeader("Player Configuration", Color3.fromRGB(150, 255, 150), 12)
+bld.createHeader("Player Configuration", Color3.fromRGB(150, 255, 150), 12)
 
 local function getRigTypeLabel()
 	local char = LocalPlayer.Character
@@ -747,7 +748,7 @@ local function getRigTypeLabel()
 	return "Lay Down Switch: OFF"
 end
 
--- Updated Container: Left side is a description Label, Right side is the new Teleport button
+-- Swapped full button to a Label on the left and TextButton on the right side
 local playerControllerContainer = Instance.new("Frame")
 playerControllerContainer.Size = UDim2.new(1, 0, 0, 34)
 playerControllerContainer.BackgroundTransparency = 1
@@ -758,7 +759,7 @@ playerControllerContainer.Parent = bld.scrollingFrame
 local playerControllerLabel = Instance.new("TextLabel")
 playerControllerLabel.Size = UDim2.new(0.5, -5, 1, 0)
 playerControllerLabel.BackgroundTransparency = 1
-playerControllerLabel.Text = "  Player Controller:" -- Replaced old text with a generic label
+playerControllerLabel.Text = "  Player Rig Modifier:"
 playerControllerLabel.TextColor3 = Color3.new(1,1,1)
 playerControllerLabel.Font = Enum.Font.Gotham
 playerControllerLabel.TextSize = 12
@@ -766,17 +767,16 @@ playerControllerLabel.TextXAlignment = Enum.TextXAlignment.Left
 playerControllerLabel.ZIndex = 14
 playerControllerLabel.Parent = playerControllerContainer
 
--- Teleport Button placed on the right side instead of the old pose switch
-local teleportRightBtn = Instance.new("TextButton")
-teleportRightBtn.Size = UDim2.new(0.5, 0, 1, 0)
-teleportRightBtn.Position = UDim2.new(0.5, 0, 0, 0)
-teleportRightBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-teleportRightBtn.TextColor3 = Color3.new(1,1,1)
-teleportRightBtn.Font = Enum.Font.Gotham
-teleportRightBtn.TextSize = 12
-teleportRightBtn.Text = "Teleport To Target"
-teleportRightBtn.ZIndex = 14
-teleportRightBtn.Parent = playerControllerContainer
+local poseToggleButton = Instance.new("TextButton")
+poseToggleButton.Size = UDim2.new(0.5, 0, 1, 0)
+poseToggleButton.Position = UDim2.new(0.5, 0, 0, 0)
+poseToggleButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+poseToggleButton.TextColor3 = Color3.new(1,1,1)
+poseToggleButton.Font = Enum.Font.Gotham
+poseToggleButton.TextSize = 12
+poseToggleButton.Text = getRigTypeLabel()
+poseToggleButton.ZIndex = 14
+poseToggleButton.Parent = playerControllerContainer
 
 local mobileJumpBtn = bld.createButton("Mobile Auto Jump: ON", 14)
 local dayNightBtn = bld.createButton("Day/Night: NORMAL", 15)
