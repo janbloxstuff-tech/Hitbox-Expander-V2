@@ -747,10 +747,47 @@ local function getRigTypeLabel()
 	return "Lay Down Switch: OFF"
 end
 
-local poseToggleButton = bld.createButton(getRigTypeLabel(), 13)
+-- Swapped full button to a Label on the left and TextButton on the right side
+local playerControllerContainer = Instance.new("Frame")
+playerControllerContainer.Size = UDim2.new(1, 0, 0, 34)
+playerControllerContainer.BackgroundTransparency = 1
+playerControllerContainer.LayoutOrder = 13
+playerControllerContainer.ZIndex = 13
+playerControllerContainer.Parent = bld.scrollingFrame
+
+local playerControllerLabel = Instance.new("TextLabel")
+playerControllerLabel.Size = UDim2.new(0.5, -5, 1, 0)
+playerControllerLabel.BackgroundTransparency = 1
+playerControllerLabel.Text = "  Player Rig Modifier:"
+playerControllerLabel.TextColor3 = Color3.new(1,1,1)
+playerControllerLabel.Font = Enum.Font.Gotham
+playerControllerLabel.TextSize = 12
+playerControllerLabel.TextXAlignment = Enum.TextXAlignment.Left
+playerControllerLabel.ZIndex = 14
+playerControllerLabel.Parent = playerControllerContainer
+
+local poseToggleButton = Instance.new("TextButton")
+poseToggleButton.Size = UDim2.new(0.5, 0, 1, 0)
+poseToggleButton.Position = UDim2.new(0.5, 0, 0, 0)
+poseToggleButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+poseToggleButton.TextColor3 = Color3.new(1,1,1)
+poseToggleButton.Font = Enum.Font.Gotham
+poseToggleButton.TextSize = 12
+poseToggleButton.Text = getRigTypeLabel()
+poseToggleButton.ZIndex = 14
+poseToggleButton.Parent = playerControllerContainer
+
 local mobileJumpBtn = bld.createButton("Mobile Auto Jump: ON", 14)
 local dayNightBtn = bld.createButton("Day/Night: NORMAL", 15)
 local fullBrightBtn = bld.createButton("Loop FullBright: OFF", 16)
+
+-- No Cool down Proximity Control Button
+_G.NoCooldownProximity = false
+local proximityButton = bld.createButton("No Cool down Proximity: OFF", 16.5)
+proximityButton.MouseButton1Click:Connect(function()
+	_G.NoCooldownProximity = not _G.NoCooldownProximity
+	proximityButton.Text = "No Cool down Proximity: " .. (_G.NoCooldownProximity and "ON" or "OFF")
+end)
 
 local gfxMin, gfxPls, gfxDisp = bld.createTrackerRow("Graphics Level", tostring(_G.GraphicsLevel), 17)
 
@@ -1239,10 +1276,20 @@ RunService.RenderStepped:Connect(function()
 	if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
 		local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
 		hum.UseJumpPower = true
-		if _G.DisableAutoJump then hum.AutoJumpEnabled = false end
+		-- FIXED: Now correctly re-enables AutoJump when toggled back ON
+		hum.AutoJumpEnabled = not _G.DisableAutoJump 
 		if _G.WalkSpeedToggle then hum.WalkSpeed = _G.CustomWalkSpeed end
 		if _G.JumpPowerToggle then hum.JumpPower = _G.CustomJumpPower end
 		if _G.LayModEnabled then hum.HipHeight = -2 end
+	end
+
+	-- Continuous No Cooldown Proximity Prompt Loop
+	if _G.NoCooldownProximity then
+		for _, v in ipairs(workspace:GetDescendants()) do
+			if v:IsA("ProximityPrompt") then
+				v.HoldDuration = 0
+			end
+		end
 	end
 
 	if _G.WalkSpeedToggle and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
