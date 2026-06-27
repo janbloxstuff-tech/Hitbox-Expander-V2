@@ -1265,7 +1265,22 @@ playerResetBtn.MouseButton1Click:Connect(function()
 	if hum then hum.WalkSpeed = 16; hum.UseJumpPower = true; hum.JumpPower = 50 end
 end)
 
-flingBtn.MouseButton1Click:Connect(function() flingEngine.fling(flingInput.Text) end)
+teleportRightBtn.MouseButton1Click:Connect(function()
+	local targetName = flingInput.Text
+	if targetName == "" then return end
+	local search = string.lower(targetName)
+	
+	for _, p in ipairs(utils.Players:GetPlayers()) do
+		if p ~= utils.LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+			if string.find(string.lower(p.Name), search) or string.find(string.lower(p.DisplayName), search) then
+				if utils.LocalPlayer.Character and utils.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+					utils.LocalPlayer.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 0)
+					break
+				end
+			end
+		end
+	end
+end)
 
 teleportRightBtn.MouseButton1Click:Connect(function()
 	local targetName = flingInput.Text
@@ -1283,6 +1298,8 @@ teleportRightBtn.MouseButton1Click:Connect(function()
 		end
 	end
 end)
+
+flingBtn.MouseButton1Click:Connect(function() flingEngine.fling(flingInput.Text) end)
 
 RunService.RenderStepped:Connect(function()
 	updateTeleportMenu()
