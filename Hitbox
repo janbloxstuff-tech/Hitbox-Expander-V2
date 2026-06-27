@@ -777,13 +777,13 @@ poseToggleButton.Text = getRigTypeLabel()
 poseToggleButton.ZIndex = 14
 poseToggleButton.Parent = playerControllerContainer
 
-local mobileJumpBtn = bld.createButton("Mobile Auto Jump: ON", 14)
-local dayNightBtn = bld.createButton("Day/Night: NORMAL", 15)
-local fullBrightBtn = bld.createButton("Loop FullBright: OFF", 16)
+local mobileJumpBtn = bld.createButton("Mobile Auto Jump: ON", 13)
+local dayNightBtn = bld.createButton("Day/Night: NORMAL", 14)
+local fullBrightBtn = bld.createButton("Loop FullBright: OFF", 15)
 
 -- No Cool down Proximity Control Button
 _G.NoCooldownProximity = false
-local proximityButton = bld.createButton("No Cool down Proximity: OFF", 16.5)
+local proximityButton = bld.createButton("No Cool down Proximity: OFF", 16)
 proximityButton.MouseButton1Click:Connect(function()
 	_G.NoCooldownProximity = not _G.NoCooldownProximity
 	proximityButton.Text = "No Cool down Proximity: " .. (_G.NoCooldownProximity and "ON" or "OFF")
@@ -798,49 +798,49 @@ flingInput.Size = UDim2.new(1, -70, 1, 0); flingInput.BackgroundColor3 = Color3.
 flingInput.Font = Enum.Font.Gotham; flingInput.TextSize = 12; flingInput.Text = ""; flingInput.PlaceholderText = "Target Name..."; flingInput.ZIndex = 14; flingInput.Parent = flingContainer
 local flingBtn = bld.createButton("Fling", 2, flingContainer); flingBtn.Size = UDim2.new(0, 65, 1, 0); flingBtn.Position = UDim2.new(1, -65, 0, 0); flingBtn.ZIndex = 14
 
-local wsToggleBtn = bld.createButton("Master Walkspeed State: OFF", 19)
-local wsMin, wsPls, wsDisp = bld.createTrackerRow("LocalPlayer Walkspeed", tostring(_G.CustomWalkSpeed), 20)
+local wsToggleBtn = bld.createButton("Master Walkspeed State: OFF", 18)
+local wsMin, wsPls, wsDisp = bld.createTrackerRow("LocalPlayer Walkspeed", tostring(_G.CustomWalkSpeed), 19)
 
-local jpToggleBtn = bld.createButton("Master Jumppower State: OFF", 21)
-local jpMin, jpPls, jpDisp = bld.createTrackerRow("LocalPlayer Jumppower", tostring(_G.CustomJumpPower), 22)
+local jpToggleBtn = bld.createButton("Master Jumppower State: OFF", 20)
+local jpMin, jpPls, jpDisp = bld.createTrackerRow("LocalPlayer Jumppower", tostring(_G.CustomJumpPower), 21)
 
-local playerResetBtn = bld.createButton("Reset Movement Attributes", 23)
+local playerResetBtn = bld.createButton("Reset Movement Attributes", 22)
 playerResetBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 40)
 
 -- NAVIGATION SECTION
-bld.createHeader("Navigation Framework", Color3.fromRGB(255, 255, 100), 24)
+bld.createHeader("Navigation Framework", Color3.fromRGB(255, 255, 100), 23)
 
-local teleportDropdownBtn = bld.createButton("Teleport Controls v", 25)
+local teleportDropdownBtn = bld.createButton("Teleport Controls v", 24)
 local teleportDropFrame = Instance.new("Frame")
-teleportDropFrame.Size = UDim2.new(1, 0, 0, 0); teleportDropFrame.BackgroundTransparency = 1; teleportDropFrame.LayoutOrder = 26
+teleportDropFrame.Size = UDim2.new(1, 0, 0, 0); teleportDropFrame.BackgroundTransparency = 1; teleportDropFrame.LayoutOrder = 25
 teleportDropFrame.Visible = false; teleportDropFrame.ZIndex = 13; teleportDropFrame.Parent = bld.scrollingFrame
 local teleportDropLayout = Instance.new("UIListLayout")
 teleportDropLayout.Padding = UDim.new(0, 4); teleportDropLayout.SortOrder = Enum.SortOrder.LayoutOrder; teleportDropLayout.Parent = teleportDropFrame
 
-local jumpscareDropdownBtn = bld.createButton("Jumpscare Players v", 27)
+local jumpscareDropdownBtn = bld.createButton("Jumpscare Players v", 26)
 local jumpscareDropFrame = Instance.new("Frame")
-jumpscareDropFrame.Size = UDim2.new(1, 0, 0, 0); jumpscareDropFrame.BackgroundTransparency = 1; jumpscareDropFrame.LayoutOrder = 28
+jumpscareDropFrame.Size = UDim2.new(1, 0, 0, 0); jumpscareDropFrame.BackgroundTransparency = 1; jumpscareDropFrame.LayoutOrder = 27
 jumpscareDropFrame.Visible = false; jumpscareDropFrame.ZIndex = 13; jumpscareDropFrame.Parent = bld.scrollingFrame
 local jumpscareLayout = Instance.new("UIListLayout")
 jumpscareLayout.Padding = UDim.new(0, 4); jumpscareLayout.SortOrder = Enum.SortOrder.LayoutOrder; jumpscareLayout.Parent = jumpscareDropFrame
 
--- TEAM SELECTION MASTER PIPELINE (Moved up to slot 29 & 30 so it belongs directly with navigation)
-local teamDropdownBtn = bld.createButton("Team Configuration v", 29)
+-- TEAM SELECTION MASTER PIPELINE (Moved up to slot 28 & 29 so it belongs directly with navigation)
+local teamDropdownBtn = bld.createButton("Team Configuration v", 28)
 local teamDropFrame = Instance.new("Frame")
-teamDropFrame.Size = UDim2.new(1, 0, 0, 0); teamDropFrame.BackgroundTransparency = 1; teamDropFrame.LayoutOrder = 30
+teamDropFrame.Size = UDim2.new(1, 0, 0, 0); teamDropFrame.BackgroundTransparency = 1; teamDropFrame.LayoutOrder = 29
 teamDropFrame.Visible = false; teamDropFrame.ZIndex = 13; teamDropFrame.Parent = bld.scrollingFrame
 local teamDropLayout = Instance.new("UIListLayout")
 teamDropLayout.Padding = UDim.new(0, 4); teamDropLayout.SortOrder = Enum.SortOrder.LayoutOrder; teamDropLayout.Parent = teamDropFrame
 
--- ESP CONTROL LAYER (Pushed down sequentially to 31+)
-bld.createHeader("ESP Configuration", Color3.fromRGB(255, 100, 100), 31)
-local espToggleButton = bld.createButton("ESP Master Switch: OFF", 32)
-local npcEspToggleButton = bld.createButton("NPC ESP Switch: OFF", 33)
-local teamCheckButton = bld.createButton("ESP Team Check: OFF", 34)
+-- ESP CONTROL LAYER (Pushed down sequentially to 30+)
+bld.createHeader("ESP Configuration", Color3.fromRGB(255, 100, 100), 30)
+local espToggleButton = bld.createButton("ESP Master Switch: OFF", 31)
+local npcEspToggleButton = bld.createButton("NPC ESP Switch: OFF", 32)
+local teamCheckButton = bld.createButton("ESP Team Check: OFF", 33)
 
-local settingDropdownBtn = bld.createButton("Configure Side Settings v", 35)
+local settingDropdownBtn = bld.createButton("Configure Side Settings v", 34)
 local settingDropFrame = Instance.new("Frame")
-settingDropFrame.Size = UDim2.new(1, 0, 0, 0); settingDropFrame.BackgroundTransparency = 1; settingDropFrame.LayoutOrder = 36
+settingDropFrame.Size = UDim2.new(1, 0, 0, 0); settingDropFrame.BackgroundTransparency = 1; settingDropFrame.LayoutOrder = 35
 settingDropFrame.Visible = false; settingDropFrame.ZIndex = 13; settingDropFrame.Parent = bld.scrollingFrame
 local settingDropLayout = Instance.new("UIListLayout")
 settingDropLayout.Padding = UDim.new(0, 4); settingDropLayout.SortOrder = Enum.SortOrder.LayoutOrder; settingDropLayout.Parent = settingDropFrame
