@@ -810,7 +810,36 @@ playerResetBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 40)
 -- NAVIGATION SECTION
 bld.createHeader("Navigation Framework", Color3.fromRGB(255, 255, 100), 23)
 
-local teleportDropdownBtn = bld.createButton("Teleport Controls v", 24)
+-- Swapped Teleport Controls to a Left Label and a Right Button layout
+local teleportDropContainer = Instance.new("Frame")
+teleportDropContainer.Size = UDim2.new(1, 0, 0, 34)
+teleportDropContainer.BackgroundTransparency = 1
+teleportDropContainer.LayoutOrder = 24 -- Maintained original LayoutOrder
+teleportDropContainer.ZIndex = 13
+teleportDropContainer.Parent = bld.scrollingFrame
+
+local teleportDropLabel = Instance.new("TextLabel")
+teleportDropLabel.Size = UDim2.new(0.5, -5, 1, 0)
+teleportDropLabel.BackgroundTransparency = 1
+teleportDropLabel.Text = "  Teleport Controller:"
+teleportDropLabel.TextColor3 = Color3.new(1,1,1)
+teleportDropLabel.Font = Enum.Font.Gotham
+teleportDropLabel.TextSize = 12
+teleportDropLabel.TextXAlignment = Enum.TextXAlignment.Left
+teleportDropLabel.ZIndex = 14
+teleportDropLabel.Parent = teleportDropContainer
+
+local teleportDropdownBtn = Instance.new("TextButton")
+teleportDropdownBtn.Size = UDim2.new(0.5, 0, 1, 0)
+teleportDropdownBtn.Position = UDim2.new(0.5, 0, 0, 0)
+teleportDropdownBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+teleportDropdownBtn.TextColor3 = Color3.new(1,1,1)
+teleportDropdownBtn.Font = Enum.Font.Gotham
+teleportDropdownBtn.TextSize = 12
+teleportDropdownBtn.Text = "Open Controls v"
+teleportDropdownBtn.ZIndex = 14
+teleportDropdownBtn.Parent = teleportDropContainer
+
 local teleportDropFrame = Instance.new("Frame")
 teleportDropFrame.Size = UDim2.new(1, 0, 0, 0); teleportDropFrame.BackgroundTransparency = 1; teleportDropFrame.LayoutOrder = 25
 teleportDropFrame.Visible = false; teleportDropFrame.ZIndex = 13; teleportDropFrame.Parent = bld.scrollingFrame
@@ -1032,7 +1061,8 @@ end
 -- DROPDOWN CONTROLLERS (Corrected Visibility Handling to Eliminate Empty Padding Spacing)
 teleportDropdownBtn.MouseButton1Click:Connect(function()
 	teleportDropFrame.Visible = not teleportDropFrame.Visible
-	teleportDropdownBtn.Text = teleportDropFrame.Visible and "Teleport Controls ^" or "Teleport Controls v"
+	-- Update the right-side button text dynamically based on visibility status
+	teleportDropdownBtn.Text = teleportDropFrame.Visible and "Close Controls ^" or "Open Controls v"
 
 	if teleportDropFrame.Visible then
 		jumpscareDropFrame.Visible = false
@@ -1042,7 +1072,6 @@ teleportDropdownBtn.MouseButton1Click:Connect(function()
 		jumpscareDropFrame.Size = UDim2.new(1, 0, 0, 0)
 		teamDropFrame.Size = UDim2.new(1, 0, 0, 0)
 		updateTeleportMenu()
-		-- Dynamically size this frame open
 		teleportDropFrame.Size = UDim2.new(1, 0, 0, teleportDropLayout.AbsoluteContentSize.Y)
 	else
 		teleportDropFrame.Size = UDim2.new(1, 0, 0, 0)
