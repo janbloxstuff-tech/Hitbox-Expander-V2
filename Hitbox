@@ -974,24 +974,58 @@ local function updateTeleportMenu()
 
 	for teamName, players in pairs(grouped) do
 		local teamHeader = Instance.new("TextLabel")
-		teamHeader.Size = UDim2.new(1, 0, 0, 24); teamHeader.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-		teamHeader.TextColor3 = Color3.fromRGB(255, 255, 100); teamHeader.Font = Enum.Font.GothamBold; teamHeader.TextSize = 11
-		teamHeader.Text = "Team: " .. teamName; teamHeader.LayoutOrder = orderCount; teamHeader.ZIndex = 14; teamHeader.Parent = teleportDropFrame
+		teamHeader.Size = UDim2.new(1, 0, 0, 24)
+		teamHeader.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+		teamHeader.TextColor3 = Color3.fromRGB(255, 255, 100)
+		teamHeader.Font = Enum.Font.GothamBold
+		teamHeader.TextSize = 11
+		teamHeader.Text = "Team: " .. teamName
+		teamHeader.LayoutOrder = orderCount
+		teamHeader.ZIndex = 14
+		teamHeader.Parent = teleportDropFrame
 		orderCount = orderCount + 1
 
 		for _, p in ipairs(players) do
 			local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude)
 
-			local btn = Instance.new("TextButton")
-			btn.Size = UDim2.new(1, 0, 0, 34); btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-			btn.TextColor3 = Color3.new(1, 1, 1); btn.Font = Enum.Font.Gotham; btn.TextSize = 12
-			btn.Text = p.DisplayName .. " [" .. dist .. " Studs]"; btn.LayoutOrder = orderCount; btn.ZIndex = 14; btn.Parent = teleportDropFrame
+			-- Container Row for the Player
+			local playerRowContainer = Instance.new("Frame")
+			playerRowContainer.Size = UDim2.new(1, 0, 0, 34)
+			playerRowContainer.BackgroundTransparency = 1
+			playerRowContainer.LayoutOrder = orderCount
+			playerRowContainer.ZIndex = 14
+			playerRowContainer.Parent = teleportDropFrame
 
-			btn.MouseButton1Click:Connect(function()
+			-- Left Side: Player Label showing Name and Distance
+			local playerLabel = Instance.new("TextLabel")
+			playerLabel.Size = UDim2.new(0.5, -5, 1, 0)
+			playerLabel.BackgroundTransparency = 1
+			playerLabel.Text = "  " .. p.DisplayName .. " [" .. dist .. "s]"
+			playerLabel.TextColor3 = Color3.new(1, 1, 1)
+			playerLabel.Font = Enum.Font.Gotham
+			playerLabel.TextSize = 12
+			playerLabel.TextXAlignment = Enum.TextXAlignment.Left
+			playerLabel.ZIndex = 15
+			playerLabel.Parent = playerRowContainer
+
+			-- Right Side: The Teleport Action Button
+			local tpActionBtn = Instance.new("TextButton")
+			tpActionBtn.Size = UDim2.new(0.5, 0, 1, 0)
+			tpActionBtn.Position = UDim2.new(0.5, 0, 0, 0)
+			tpActionBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+			tpActionBtn.TextColor3 = Color3.fromRGB(150, 255, 150) -- Colored green for clarity
+			tpActionBtn.Font = Enum.Font.GothamBold
+			tpActionBtn.TextSize = 12
+			tpActionBtn.Text = "Teleport"
+			tpActionBtn.ZIndex = 15
+			tpActionBtn.Parent = playerRowContainer
+
+			tpActionBtn.MouseButton1Click:Connect(function()
 				if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
 					LocalPlayer.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 0)
 				end
 			end)
+			
 			orderCount = orderCount + 1
 		end
 	end
