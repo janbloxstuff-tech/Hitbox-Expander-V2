@@ -1361,3 +1361,4 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 		if hum then poseToggleButton.Text = getRigTypeLabel() end
 	end)
 end)
+
