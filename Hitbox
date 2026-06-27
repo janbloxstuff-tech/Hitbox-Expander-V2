@@ -737,7 +737,6 @@ local rtMin, rtPls, rtDisp = bld.createTrackerRow("RootPart Size Adjuster", tost
 local trMin, trPls, trDisp = bld.createTrackerRow("Hitbox Transparency", string.format("%.1f", _G.HitboxTransparency), 11)
 
 bld.createHeader("Player Configuration", Color3.fromRGB(150, 255, 150), 12)
-bld.createHeader("Player Configuration", Color3.fromRGB(150, 255, 150), 12)
 
 local function getRigTypeLabel()
 	local char = LocalPlayer.Character
