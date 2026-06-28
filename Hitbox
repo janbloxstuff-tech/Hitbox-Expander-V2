@@ -340,11 +340,13 @@ _G.FlingEngine = {
 
 		if not tRoot or not myRoot or not myHum or myHum.SeatPart then return end
 
-		local oldV = myRoot.AssemblyLinearVelocity
-		local oldC = myRoot.CFrame
-		local bV = Instance.new("BodyVelocity")
-		bV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-		bV.Velocity = Vector3.new(99999, 99999, 99999)
+		-- Store original states cleanly to prevent movement desync delays afterward
+		local oldCFrame = myRoot.CFrame
+
+		-- Create high-velocity physics disruption spin instead of positional velocity bashing
+		local bV = Instance.new("BodyAngularVelocity")
+		bV.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+		bV.AngularVelocity = Vector3.new(0, 999999, 0)
 		bV.Parent = myRoot
 
 		_G.FlingNoclip = true
@@ -361,21 +363,26 @@ _G.FlingEngine = {
 			end
 		end)
 
+		-- Fast, aggressive execution loop (0.3 seconds max)
 		local start = os.clock()
-		while os.clock() - start < 0.4 do
+		while os.clock() - start < 0.3 do
 			utils.RunService.Heartbeat:Wait()
-			if tRoot and myRoot and not myHum.SeatPart then
-				-- Teleports you directly to the exact center CFrame position of the target player
-				myRoot.CFrame = tRoot.CFrame
-			else break end
+			if tRoot and myRoot and myHum and myHum.Health > 0 then
+				-- Position local player perfectly underneath their bounding box to trigger physics conflict
+				myRoot.CFrame = tRoot.CFrame * CFrame.new(0, -3.5, 0)
+			else 
+				break 
+			end
 		end
 
+		-- Instantly restore physics variables cleanly so movement doesn't delay
 		_G.FlingNoclip = false
 		if noclipConnection then noclipConnection:Disconnect() end
-
 		bV:Destroy()
-		myRoot.AssemblyLinearVelocity = oldV
-		myRoot.CFrame = oldC
+
+		myRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+		myRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+		myRoot.CFrame = oldCFrame
 	end
 }
 
