@@ -957,7 +957,6 @@ end
 local function updateTeleportMenu()
 	if not teleportDropFrame.Visible then return end
 
-	-- Track existing UI elements so we don't recreate them every second
 	local existingItems = {}
 	for _, c in ipairs(teleportDropFrame:GetChildren()) do 
 		if not c:IsA("UIListLayout") then 
@@ -970,13 +969,16 @@ local function updateTeleportMenu()
 
 	for _, p in ipairs(Players:GetPlayers()) do
 		if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-			local teamName = p.Team and p.Team.Name or "Neutral"
-			if not grouped[teamName] then grouped[teamName] = {} end
-			table.insert(grouped[teamName], p)
+			local hum = p.Character:FindFirstChildOfClass("Humanoid")
+			-- Only include players who are alive
+			if hum and hum.Health > 0 then
+				local teamName = p.Team and p.Team.Name or "Neutral"
+				if not grouped[teamName] then grouped[teamName] = {} end
+				table.insert(grouped[teamName], p)
+			end
 		end
 	end
 
-	-- Keep track of items currently active to clear out disconnected players later
 	local activeNames = {}
 
 	for teamName, players in pairs(grouped) do
@@ -1007,7 +1009,6 @@ local function updateTeleportMenu()
 			local playerRowContainer = existingItems[playerKey]
 			local playerLabel
 			
-			-- Only build the structure if it doesn't already exist
 			if not playerRowContainer then
 				playerRowContainer = Instance.new("Frame")
 				playerRowContainer.Name = playerKey
@@ -1039,7 +1040,9 @@ local function updateTeleportMenu()
 				tpActionBtn.Parent = playerRowContainer
 
 				tpActionBtn.MouseButton1Click:Connect(function()
-					if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+					-- Extra verification that they are still alive when clicked
+					local currentHum = p.Character and p.Character:FindFirstChildOfClass("Humanoid")
+					if currentHum and currentHum.Health > 0 and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("HumanoidRootPart") then
 						LocalPlayer.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 0)
 					end
 				end)
@@ -1047,7 +1050,6 @@ local function updateTeleportMenu()
 				playerLabel = playerRowContainer:FindFirstChild("PlayerLabel")
 			end
 
-			-- Safe updating: Only overwrite the text label, keeping the original button active!
 			if playerLabel then
 				playerLabel.Text = "  " .. p.DisplayName .. " [" .. dist .. " Studs]"
 			end
@@ -1057,7 +1059,6 @@ local function updateTeleportMenu()
 		end
 	end
 
-	-- Clean up any players who left the server or shifted teams
 	for name, element in pairs(existingItems) do
 		if not activeNames[name] then
 			element:Destroy()
