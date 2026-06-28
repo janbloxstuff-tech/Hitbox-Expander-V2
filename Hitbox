@@ -878,6 +878,23 @@ local showNameButton = bld.createButton("Show Name: ON", 1, settingDropFrame)
 local showHealthButton = bld.createButton("Show Health: ON", 2, settingDropFrame)
 local xrayButton = bld.createButton("X-Ray: OFF", 3, settingDropFrame)
 
+_G.AutoAimEnabled = false
+local autoAimToggleBtn = bld.createButton("Auto Aim Lock: OFF", 36)
+
+local aimButton = Instance.new("TextButton")
+aimButton.Size = UDim2.new(0, 110, 0, 45)
+aimButton.Position = UDim2.new(0.5, -55, 0.7, 0)
+aimButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+aimButton.TextColor3 = Color3.new(1, 1, 1)
+aimButton.Text = "HOLD TO AIM"
+aimButton.Font = Enum.Font.GothamBold
+aimButton.TextSize = 11
+aimButton.Active = true
+aimButton.Draggable = true -- Native draggable active
+aimButton.Visible = false
+aimButton.ZIndex = 999
+aimButton.Parent = screenGui
+
 -- AbsoluteContentSize Adjustments
 teleportDropLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
 	if teleportDropFrame.Visible then teleportDropFrame.Size = UDim2.new(1, 0, 0, teleportDropLayout.AbsoluteContentSize.Y) end
@@ -1363,6 +1380,12 @@ playerResetBtn.MouseButton1Click:Connect(function()
 end)
 
 flingBtn.MouseButton1Click:Connect(function() flingEngine.fling(flingInput.Text) end)
+
+autoAimToggleBtn.MouseButton1Click:Connect(function()
+	_G.AutoAimEnabled = not _G.AutoAimEnabled
+	autoAimToggleBtn.Text = "Auto Aim Lock: " .. (_G.AutoAimEnabled and "ON" or "OFF")
+	aimButton.Visible = _G.AutoAimEnabled
+end)
 
 RunService.RenderStepped:Connect(function()
 	updateTeleportMenu()
