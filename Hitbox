@@ -799,62 +799,62 @@ flingInput.Font = Enum.Font.Gotham; flingInput.TextSize = 12; flingInput.Text = 
 local flingBtn = bld.createButton("Fling", 2, flingContainer); flingBtn.Size = UDim2.new(0, 65, 1, 0); flingBtn.Position = UDim2.new(1, -65, 0, 0); flingBtn.ZIndex = 14
 
 -- Walkspeed Configuration
-local wsHeader = bld.createHeader("WalkSpeed Customizer", Color3.fromRGB(150, 255, 255), 18)
-local wsDisplay = bld.createButton("WalkSpeed: " .. _G.CustomWalkSpeed, 19)
-local wsToggleBtn = bld.createButton("Toggle WalkSpeed: OFF", 20)
+_G.wsHeader = bld.createHeader("WalkSpeed Customizer", Color3.fromRGB(150, 255, 255), 18)
+_G.wsDisplay = bld.createButton("WalkSpeed: " .. _G.CustomWalkSpeed, 19)
+_G.wsToggleBtn = bld.createButton("Toggle WalkSpeed: OFF", 20)
 
-local wsIncrContainer = Instance.new("Frame")
-wsIncrContainer.Size = UDim2.new(1, 0, 0, 34)
-wsIncrContainer.BackgroundTransparency = 1
-wsIncrContainer.LayoutOrder = 20.5
-wsIncrContainer.ZIndex = 13
-wsIncrContainer.Parent = bld.scrollingFrame
+_G.wsIncrContainer = Instance.new("Frame")
+_G.wsIncrContainer.Size = UDim2.new(1, 0, 0, 34)
+_G.wsIncrContainer.BackgroundTransparency = 1
+_G.wsIncrContainer.LayoutOrder = 20.5
+_G.wsIncrContainer.ZIndex = 13
+_G.wsIncrContainer.Parent = bld.scrollingFrame
 
--- --- LEFT SIDE (MINUS BUTTONS) ---
-local wsMinus5Btn = Instance.new("TextButton")
-wsMinus5Btn.Size = UDim2.new(0.25, -2, 1, 0)
-wsMinus5Btn.Position = UDim2.new(0, 0, 0, 0)
-wsMinus5Btn.BackgroundColor3 = Color3.fromRGB(60, 30, 30)
-wsMinus5Btn.TextColor3 = Color3.new(1, 0.4, 0.4)
-wsMinus5Btn.Text = "-- (-5)"
-wsMinus5Btn.Font = Enum.Font.GothamBold
-wsMinus5Btn.TextSize = 11
-wsMinus5Btn.ZIndex = 14
-wsMinus5Btn.Parent = wsIncrContainer
+-- LEFT
+_G.wsMinus5Btn = Instance.new("TextButton")
+_G.wsMinus5Btn.Size = UDim2.new(0.25, -2, 1, 0)
+_G.wsMinus5Btn.Position = UDim2.new(0, 0, 0, 0)
+_G.wsMinus5Btn.BackgroundColor3 = Color3.fromRGB(60, 30, 30)
+_G.wsMinus5Btn.TextColor3 = Color3.new(1, 0.4, 0.4)
+_G.wsMinus5Btn.Text = "-- (-5)"
+_G.wsMinus5Btn.Font = Enum.Font.GothamBold
+_G.wsMinus5Btn.TextSize = 11
+_G.wsMinus5Btn.ZIndex = 14
+_G.wsMinus5Btn.Parent = _G.wsIncrContainer
 
-local wsMinus1Btn = Instance.new("TextButton")
-wsMinus1Btn.Size = UDim2.new(0.25, -2, 1, 0)
-wsMinus1Btn.Position = UDim2.new(0.25, 0, 0, 0)
-wsMinus1Btn.BackgroundColor3 = Color3.fromRGB(75, 45, 45)
-wsMinus1Btn.TextColor3 = Color3.new(1, 0.7, 0.7)
-wsMinus1Btn.Text = "- (-1)"
-wsMinus1Btn.Font = Enum.Font.GothamBold
-wsMinus1Btn.TextSize = 11
-wsMinus1Btn.ZIndex = 14
-wsMinus1Btn.Parent = wsIncrContainer
+_G.wsMinus1Btn = Instance.new("TextButton")
+_G.wsMinus1Btn.Size = UDim2.new(0.25, -2, 1, 0)
+_G.wsMinus1Btn.Position = UDim2.new(0.25, 0, 0, 0)
+_G.wsMinus1Btn.BackgroundColor3 = Color3.fromRGB(75, 45, 45)
+_G.wsMinus1Btn.TextColor3 = Color3.new(1, 0.7, 0.7)
+_G.wsMinus1Btn.Text = "- (-1)"
+_G.wsMinus1Btn.Font = Enum.Font.GothamBold
+_G.wsMinus1Btn.TextSize = 11
+_G.wsMinus1Btn.ZIndex = 14
+_G.wsMinus1Btn.Parent = _G.wsIncrContainer
 
--- --- RIGHT SIDE (PLUS BUTTONS) ---
-local wsPlus1Btn = Instance.new("TextButton")
-wsPlus1Btn.Size = UDim2.new(0.25, -2, 1, 0)
-wsPlus1Btn.Position = UDim2.new(0.5, 2, 0, 0)
-wsPlus1Btn.BackgroundColor3 = Color3.fromRGB(45, 75, 45)
-wsPlus1Btn.TextColor3 = Color3.new(0.7, 1, 0.7)
-wsPlus1Btn.Text = "+ (+1)"
-wsPlus1Btn.Font = Enum.Font.GothamBold
-wsPlus1Btn.TextSize = 11
-wsPlus1Btn.ZIndex = 14
-wsPlus1Btn.Parent = wsIncrContainer
+-- RIGHT
+_G.wsPlus1Btn = Instance.new("TextButton")
+_G.wsPlus1Btn.Size = UDim2.new(0.25, -2, 1, 0)
+_G.wsPlus1Btn.Position = UDim2.new(0.5, 2, 0, 0)
+_G.wsPlus1Btn.BackgroundColor3 = Color3.fromRGB(45, 75, 45)
+_G.wsPlus1Btn.TextColor3 = Color3.new(0.7, 1, 0.7)
+_G.wsPlus1Btn.Text = "+ (+1)"
+_G.wsPlus1Btn.Font = Enum.Font.GothamBold
+_G.wsPlus1Btn.TextSize = 11
+_G.wsPlus1Btn.ZIndex = 14
+_G.wsPlus1Btn.Parent = _G.wsIncrContainer
 
-local wsPlus5Btn = Instance.new("TextButton")
-wsPlus5Btn.Size = UDim2.new(0.25, -2, 1, 0)
-wsPlus5Btn.Position = UDim2.new(0.75, 2, 0, 0)
-wsPlus5Btn.BackgroundColor3 = Color3.fromRGB(30, 60, 30)
-wsPlus5Btn.TextColor3 = Color3.new(0.4, 1, 0.4)
-wsPlus5Btn.Text = "++ (+5)"
-wsPlus5Btn.Font = Enum.Font.GothamBold
-wsPlus5Btn.TextSize = 11
-wsPlus5Btn.ZIndex = 14
-wsPlus5Btn.Parent = wsIncrContainer
+_G.wsPlus5Btn = Instance.new("TextButton")
+_G.wsPlus5Btn.Size = UDim2.new(0.25, -2, 1, 0)
+_G.wsPlus5Btn.Position = UDim2.new(0.75, 2, 0, 0)
+_G.wsPlus5Btn.BackgroundColor3 = Color3.fromRGB(30, 60, 30)
+_G.wsPlus5Btn.TextColor3 = Color3.new(0.4, 1, 0.4)
+_G.wsPlus5Btn.Text = "++ (+5)"
+_G.wsPlus5Btn.Font = Enum.Font.GothamBold
+_G.wsPlus5Btn.TextSize = 11
+_G.wsPlus5Btn.ZIndex = 14
+_G.wsPlus5Btn.Parent = _G.wsIncrContainer
 
 -- Jump Configuration
 local jpHeader = bld.createHeader("JumpPower Customizer", Color3.fromRGB(255, 150, 255), 21)
@@ -1468,11 +1468,11 @@ npcToggleButton.MouseButton1Click:Connect(function()
 	if not _G.NPCHitbox then mech.restoreAllNPCs() end
 end)
 
-szMin.MouseButton1Click:Connect(function() _G.HeadSize = math.max(1, _G.HeadSize - 5); szDisp.Text = tostring(_G.HeadSize) end)
-szPls.MouseButton1Click:Connect(function() _G.HeadSize = _G.HeadSize + 5; szDisp.Text = tostring(_G.HeadSize) end)
+szMin.MouseButton1Click:Connect(function() _G.HeadSize = math.max(1, _G.HeadSize - 1); szDisp.Text = tostring(_G.HeadSize) end)
+szPls.MouseButton1Click:Connect(function() _G.HeadSize = _G.HeadSize + 1; szDisp.Text = tostring(_G.HeadSize) end)
 
-rtMin.MouseButton1Click:Connect(function() _G.RootSize = math.max(1, _G.RootSize - 5); rtDisp.Text = tostring(_G.RootSize) end)
-rtPls.MouseButton1Click:Connect(function() _G.RootSize = _G.RootSize + 5; rtDisp.Text = tostring(_G.RootSize) end)
+rtMin.MouseButton1Click:Connect(function() _G.RootSize = math.max(1, _G.RootSize - 1); rtDisp.Text = tostring(_G.RootSize) end)
+rtPls.MouseButton1Click:Connect(function() _G.RootSize = _G.RootSize + 1; rtDisp.Text = tostring(_G.RootSize) end)
 
 trMin.MouseButton1Click:Connect(function() _G.HitboxTransparency = math.max(0, _G.HitboxTransparency - 0.1); trDisp.Text = string.format("%.1f", _G.HitboxTransparency) end)
 trPls.MouseButton1Click:Connect(function() _G.HitboxTransparency = math.min(1, _G.HitboxTransparency + 0.1); trDisp.Text = string.format("%.1f", _G.HitboxTransparency) end)
@@ -1539,31 +1539,31 @@ npcEspToggleButton.MouseButton1Click:Connect(function()
 	npcEspToggleButton.Text = "NPC ESP Switch: " .. (_G.NPCESPEnabled and "ON" or "OFF")
 end)
 
-wsToggleBtn.MouseButton1Click:Connect(function()
+_G.wsToggleBtn.MouseButton1Click:Connect(function()
 	_G.WalkSpeedToggle = not _G.WalkSpeedToggle
 	_G.PlayerModEnabled = (_G.WalkSpeedToggle or _G.JumpPowerToggle)
-	wsToggleBtn.Text = "Master Walkspeed State: " .. (_G.WalkSpeedToggle and "ON" or "OFF")
+	_G.wsToggleBtn.Text = "Master Walkspeed State: " .. (_G.WalkSpeedToggle and "ON" or "OFF")
 	if not _G.WalkSpeedToggle then
 		local char = LocalPlayer.Character; local hum = char and char:FindFirstChildOfClass("Humanoid")
 		if hum then hum.WalkSpeed = 16 end
 	end
 end)
 
-wsMinus5Btn.MouseButton1Click:Connect(function()
+_G.wsMinus5Btn.MouseButton1Click:Connect(function()
 	_G.CustomWalkSpeed = math.max(0, _G.CustomWalkSpeed - 5)
-	wsDisplay.Text = "WalkSpeed: " .. _G.CustomWalkSpeed
+	_G.wsDisplay.Text = "WalkSpeed: " .. _G.CustomWalkSpeed
 end)
-wsMinus1Btn.MouseButton1Click:Connect(function()
+_G.wsMinus1Btn.MouseButton1Click:Connect(function()
 	_G.CustomWalkSpeed = math.max(0, _G.CustomWalkSpeed - 1)
-	wsDisplay.Text = "WalkSpeed: " .. _G.CustomWalkSpeed
+	_G.wsDisplay.Text = "WalkSpeed: " .. _G.CustomWalkSpeed
 end)
-wsPlus1Btn.MouseButton1Click:Connect(function()
+_G.wsPlus1Btn.MouseButton1Click:Connect(function()
 	_G.CustomWalkSpeed = _G.CustomWalkSpeed + 1
-	wsDisplay.Text = "WalkSpeed: " .. _G.CustomWalkSpeed
+	_G.wsDisplay.Text = "WalkSpeed: " .. _G.CustomWalkSpeed
 end)
-wsPlus5Btn.MouseButton1Click:Connect(function()
+_G.wsPlus5Btn.MouseButton1Click:Connect(function()
 	_G.CustomWalkSpeed = _G.CustomWalkSpeed + 5
-	wsDisplay.Text = "WalkSpeed: " .. _G.CustomWalkSpeed
+	_G.wsDisplay.Text = "WalkSpeed: " .. _G.CustomWalkSpeed
 end)
 
 jpToggleBtn.MouseButton1Click:Connect(function()
@@ -1596,11 +1596,17 @@ end)
 playerResetBtn.MouseButton1Click:Connect(function()
 	_G.PlayerModEnabled = false; _G.WalkSpeedToggle = false; _G.JumpPowerToggle = false
 	_G.CustomWalkSpeed = 16; _G.CustomJumpPower = 50
-	wsDisp.Text = tostring(_G.CustomWalkSpeed); jpDisp.Text = tostring(_G.CustomJumpPower)
-	wsToggleBtn.Text = "Master Walkspeed State: OFF"; jpToggleBtn.Text = "Master Jumppower State: OFF"
 
-	local char = LocalPlayer.Character; local hum = char and char:FindFirstChildOfClass("Humanoid")
-	if hum then hum.WalkSpeed = 16; hum.UseJumpPower = true; hum.JumpPower = 50 end
+	if _G.wsDisplay then _G.wsDisplay.Text = "WalkSpeed: 16" end
+	if _G.jpDisplay then _G.jpDisplay.Text = "JumpPower: 50" end
+	if _G.wsToggleBtn then _G.wsToggleBtn.Text = "Toggle WalkSpeed: OFF" end
+	if _G.jpToggleBtn then _G.jpToggleBtn.Text = "Toggle JumpPower: OFF" end
+
+	if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then 
+		LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 16 
+		LocalPlayer.Character:FindFirstChildOfClass("Humanoid").UseJumpPower = true 
+		LocalPlayer.Character:FindFirstChildOfClass("Humanoid").JumpPower = 50 
+	end
 end)
 
 flingBtn.MouseButton1Click:Connect(function() flingEngine.fling(flingInput.Text) end)
@@ -1831,3 +1837,4 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 		if hum then poseToggleButton.Text = getRigTypeLabel() end
 	end)
 end)
+
