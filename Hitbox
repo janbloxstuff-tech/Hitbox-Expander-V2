@@ -878,7 +878,7 @@ local showNameButton = bld.createButton("Show Name: ON", 1, settingDropFrame)
 local showHealthButton = bld.createButton("Show Health: ON", 2, settingDropFrame)
 local xrayButton = bld.createButton("X-Ray: OFF", 3, settingDropFrame)
 
--- FIXED: Auto Aim Toggle button assigned dynamic sequencing layout order index (Pushing it below frames)
+-- FIXED: LayoutOrder shifted down to 36 so it drops completely below the side settings expansion frame
 _G.AutoAimEnabled = false
 local autoAimToggleBtn = bld.createButton("Auto Aim Lock: OFF", 36)
 
