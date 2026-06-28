@@ -878,16 +878,16 @@ local showNameButton = bld.createButton("Show Name: ON", 1, settingDropFrame)
 local showHealthButton = bld.createButton("Show Health: ON", 2, settingDropFrame)
 local xrayButton = bld.createButton("X-Ray: OFF", 3, settingDropFrame)
 
--- Auto Aim Toggle Integration
+-- FIXED: Auto Aim Toggle button assigned dynamic sequencing layout order index (Pushing it below frames)
 _G.AutoAimEnabled = false
-local autoAimToggleBtn = bld.createButton("Auto Aim Lock: OFF", 36)
+local autoAimToggleBtn = bld.createButton("Auto Aim Lock: OFF", 23)
 
 local aimButton = Instance.new("TextButton")
 aimButton.Size = UDim2.new(0, 130, 0, 45)
 aimButton.Position = UDim2.new(0.5, -65, 0.75, 0) 
 aimButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 aimButton.TextColor3 = Color3.new(1, 1, 1)
-aimButton.Text = "TAP TO LOCK AIM" -- Clear text for mobile
+aimButton.Text = "TAP TO LOCK AIM"
 aimButton.Font = Enum.Font.GothamBold
 aimButton.TextSize = 11
 aimButton.Visible = false
