@@ -1387,6 +1387,56 @@ autoAimToggleBtn.MouseButton1Click:Connect(function()
 	aimButton.Visible = _G.AutoAimEnabled
 end)
 
+
+local isAiming = false
+
+-- Monitor when you are pressing down on the draggable touch/click button
+aimButton.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		isAiming = true
+		aimButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50) -- Turn green when aiming
+	end
+end)
+
+aimButton.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		isAiming = false
+		aimButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) -- Revert to red when released
+	end
+end)
+
+-- Continuous Render Loop Integration for Camera Focus tracking
+RunService.RenderStepped:Connect(function()
+	if _G.AutoAimEnabled and isAiming and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+		local myRoot = LocalPlayer.Character.HumanoidRootPart
+		local closestTarget = nil
+		local closestDist = 50 -- Absolute range filter boundary constraint
+
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChildOfClass("Humanoid") then
+				local targetHum = p.Character:FindFirstChildOfClass("Humanoid")
+				
+				-- Check if Alive and check Team constraints
+				local passesTeamCheck = not _G.TeamCheck or (p.Team ~= LocalPlayer.Team)
+				if targetHum.Health > 0 and passesTeamCheck then
+					local targetRoot = p.Character.HumanoidRootPart
+					local currentDist = (myRoot.Position - targetRoot.Position).Magnitude
+					
+					if currentDist < closestDist then
+						closestDist = currentDist
+						closestTarget = targetRoot
+					end
+				end
+			end
+		end
+
+		-- Direct Camera Matrix Adjustment Lock
+		if closestTarget then
+			workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, closestTarget.Position)
+		end
+	end
+end)
+
 RunService.RenderStepped:Connect(function()
 	updateTeleportMenu()
 	globalESPUpdate()
