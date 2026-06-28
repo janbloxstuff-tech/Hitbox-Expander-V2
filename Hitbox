@@ -878,22 +878,21 @@ local showNameButton = bld.createButton("Show Name: ON", 1, settingDropFrame)
 local showHealthButton = bld.createButton("Show Health: ON", 2, settingDropFrame)
 local xrayButton = bld.createButton("X-Ray: OFF", 3, settingDropFrame)
 
+-- Auto Aim Toggle Integration
 _G.AutoAimEnabled = false
 local autoAimToggleBtn = bld.createButton("Auto Aim Lock: OFF", 36)
 
 local aimButton = Instance.new("TextButton")
-aimButton.Size = UDim2.new(0, 110, 0, 45)
-aimButton.Position = UDim2.new(0.5, -55, 0.7, 0)
+aimButton.Size = UDim2.new(0, 130, 0, 45)
+aimButton.Position = UDim2.new(0.5, -65, 0.75, 0) 
 aimButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 aimButton.TextColor3 = Color3.new(1, 1, 1)
-aimButton.Text = "HOLD TO AIM"
+aimButton.Text = "Tap to Lock Aim"
 aimButton.Font = Enum.Font.GothamBold
 aimButton.TextSize = 11
-aimButton.Active = true
-aimButton.Draggable = true -- Native draggable active
 aimButton.Visible = false
 aimButton.ZIndex = 999
-aimButton.Parent = screenGui
+aimButton.Parent = bld.frame.Parent
 
 -- AbsoluteContentSize Adjustments
 teleportDropLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
@@ -1387,52 +1386,123 @@ autoAimToggleBtn.MouseButton1Click:Connect(function()
 	aimButton.Visible = _G.AutoAimEnabled
 end)
 
+local isMobileAimActive = false
+local isQPressed = false
+local aimDragging = false
+local aimDragStart, aimStartPos
 
-local isAiming = false
-
--- Monitor when you are pressing down on the draggable touch/click button
+-- Dragging Logic
 aimButton.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		isAiming = true
-		aimButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50) -- Turn green when aiming
+		aimDragging = true
+		aimDragStart = input.Position
+		aimStartPos = aimButton.Position
 	end
 end)
 
-aimButton.InputEnded:Connect(function(input)
+aimButton.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		if aimDragging and aimDragStart then
+			local delta = input.Position - aimDragStart
+			aimButton.Position = UDim2.new(aimStartPos.X.Scale, aimStartPos.X.Offset + delta.X, aimStartPos.Y.Scale, aimStartPos.Y.Offset + delta.Y)
+		end
+	end
+end)
+
+-- Activation Logic: Mobile Tap & PC Keyboard Listening
+aimButton.MouseButton1Click:Connect(function()
+	-- If on mobile/touch, a single tap turns it ON/OFF
+	if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+		isMobileAimActive = not isMobileAimActive
+		aimButton.BackgroundColor3 = isMobileAimActive and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
+		aimButton.Text = isMobileAimActive and "AIM: LOCKED" or "TAP TO LOCK AIM"
+	end
+end)
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then return end
+	if _G.AutoAimEnabled and input.KeyCode == Enum.KeyCode.Q then
+		isQPressed = true
+		aimButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		isAiming = false
-		aimButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) -- Revert to red when released
+		aimDragging = false
+	end
+	if input.KeyCode == Enum.KeyCode.Q then
+		isQPressed = false
+		if not isMobileAimActive then
+			aimButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+		end
 	end
 end)
 
--- Continuous Render Loop Integration for Camera Focus tracking
+autoAimToggleBtn.MouseButton1Click:Connect(function()
+	_G.AutoAimEnabled = not _G.AutoAimEnabled
+	autoAimToggleBtn.Text = "Auto Aim Lock: " .. (_G.AutoAimEnabled and "ON" or "OFF")
+	aimButton.Visible = _G.AutoAimEnabled
+	if not _G.AutoAimEnabled then
+		isMobileAimActive = false
+		isQPressed = false
+		aimButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+		aimButton.Text = "TAP TO LOCK AIM"
+	end
+end)
+
 RunService.RenderStepped:Connect(function()
-	if _G.AutoAimEnabled and isAiming and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+	-- Aimbot runs if mobile lock is active OR if Q is held down on PC
+	local aimActive = isMobileAimActive or isQPressed
+	
+	if _G.AutoAimEnabled and aimActive and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
 		local myRoot = LocalPlayer.Character.HumanoidRootPart
+		local cam = workspace.CurrentCamera
+		
 		local closestTarget = nil
-		local closestDist = 50 -- Absolute range filter boundary constraint
+		local closestDist = 50 -- Still limited to 50 studs range limit
+		
+		-- PC Specific: Find what player the mouse cursor is pointing closest to
+		local mouseTargetPart = nil
+		if UserInputService.MouseEnabled then
+			local mousePos = UserInputService:GetMouseLocation()
+			local unitRay = cam:ViewportPointToRay(mousePos.X, mousePos.Y)
+			local raycastParams = RaycastParams.new()
+			raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+			raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+			
+			local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 1000, raycastParams)
+			if result and result.Instance then
+				mouseTargetPart = result.Instance
+			end
+		end
 
 		for _, p in ipairs(Players:GetPlayers()) do
 			if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChildOfClass("Humanoid") then
 				local targetHum = p.Character:FindFirstChildOfClass("Humanoid")
-				
-				-- Check if Alive and check Team constraints
 				local passesTeamCheck = not _G.TeamCheck or (p.Team ~= LocalPlayer.Team)
+				
 				if targetHum.Health > 0 and passesTeamCheck then
 					local targetRoot = p.Character.HumanoidRootPart
 					local currentDist = (myRoot.Position - targetRoot.Position).Magnitude
 					
-					if currentDist < closestDist then
-						closestDist = currentDist
+					if currentDist <= closestDist then
+						-- If on PC and pointing directly at this player, prioritize them immediately
+						if mouseTargetPart and mouseTargetPart:IsDescendantOf(p.Character) then
+							closestTarget = targetRoot
+							break
+						end
+						
+						-- Fallback: Track closest player by proximity within 50 studs
 						closestTarget = targetRoot
+						closestDist = currentDist
 					end
 				end
 			end
 		end
 
-		-- Direct Camera Matrix Adjustment Lock
 		if closestTarget then
-			workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, closestTarget.Position)
+			cam.CFrame = CFrame.new(cam.CFrame.Position, closestTarget.Position)
 		end
 	end
 end)
