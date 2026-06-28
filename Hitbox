@@ -887,7 +887,7 @@ aimButton.Size = UDim2.new(0, 130, 0, 45)
 aimButton.Position = UDim2.new(0.5, -65, 0.75, 0) 
 aimButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 aimButton.TextColor3 = Color3.new(1, 1, 1)
-aimButton.Text = "Tap to Lock Aim"
+aimButton.Text = "TAP TO LOCK AIM" -- Clear text for mobile
 aimButton.Font = Enum.Font.GothamBold
 aimButton.TextSize = 11
 aimButton.Visible = false
@@ -1379,12 +1379,6 @@ playerResetBtn.MouseButton1Click:Connect(function()
 end)
 
 flingBtn.MouseButton1Click:Connect(function() flingEngine.fling(flingInput.Text) end)
-
-autoAimToggleBtn.MouseButton1Click:Connect(function()
-	_G.AutoAimEnabled = not _G.AutoAimEnabled
-	autoAimToggleBtn.Text = "Auto Aim Lock: " .. (_G.AutoAimEnabled and "ON" or "OFF")
-	aimButton.Visible = _G.AutoAimEnabled
-end)
 
 local isMobileAimActive = false
 local isQPressed = false
