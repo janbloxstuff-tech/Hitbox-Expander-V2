@@ -1721,14 +1721,18 @@ RunService.RenderStepped:Connect(function()
 					local currentDist = (myRoot.Position - targetRoot.Position).Magnitude
 
 					if currentDist <= closestDist then
+						-- STAGE THE FORCED SPECIFIC OBJECT LOCATOR
+						local preferredPartName = _G.AimbotTargetPart or _G.TargetPart or "HumanoidRootPart"
+						local chosenPart = p.Character:FindFirstChild(preferredPartName) or targetRoot
+
 						-- If on PC and pointing directly at this player, prioritize them immediately
 						if mouseTargetPart and mouseTargetPart:IsDescendantOf(p.Character) then
-							closestTarget = targetRoot
+							closestTarget = chosenPart
 							break
 						end
 
 						-- Fallback: Track closest player by proximity within 50 studs
-						closestTarget = targetRoot
+						closestTarget = chosenPart
 						closestDist = currentDist
 					end
 				end
