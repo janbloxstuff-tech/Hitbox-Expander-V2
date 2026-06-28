@@ -236,7 +236,8 @@ _G.GraphicsEngine = {
 		end
 		if hl then
 			hl.FillColor = targetColor
-			hl.OutlineColor = targetColor
+			hl.FillTransparency = 1
+			hl.OutlineColor = Color3.fromRGB(255, 0, 0)
 		end
 	end,
 	createESPLabel = function(player)
@@ -456,7 +457,7 @@ _G.Pipeline = {
 
 			if part.Name == "Head" then 
 				if hum and hum.RigType == Enum.HumanoidRigType.R6 then
-					utils.safeSetProperty(part, "Massless", false)
+					utils.safeSetProperty(part, "Massless", true)
 				else
 					utils.safeSetProperty(part, "Massless", true)
 				end
@@ -479,7 +480,7 @@ _G.Pipeline = {
 
 			local hum = npc:FindFirstChildOfClass("Humanoid")
 			if hum and hum.RigType == Enum.HumanoidRigType.R6 then
-				utils.safeSetProperty(part, "Massless", false)
+				utils.safeSetProperty(part, "Massless", true)
 			else
 				utils.safeSetProperty(part, "Massless", true)
 			end
@@ -726,7 +727,7 @@ local playerLabels, npcLabels, trackedNPCs = _G.PlayerLabels, _G.NpcLabels, _G.T
 
 -- UI Layout Configuration
 bld.createHeader("Hitbox Configuration", Color3.fromRGB(100, 200, 255), 1)
-local toggleButton = bld.createButton("Toggle Hitbox: ON", 2)
+local toggleButton = bld.createButton("Toggle Hitbox: OFF", 2)
 local forcefieldCheckButton = bld.createButton("Check Forcefield: OFF", 3)
 
 local targetLabel = Instance.new("TextLabel")
@@ -1432,7 +1433,7 @@ end)
 
 local function handleHitboxToggle()
 	_G.Disabled = not _G.Disabled
-	toggleButton.Text = "Toggle Hitbox: " .. (_G.Disabled and "ON" or "OFF")
+	toggleButton.Text = "Toggle Hitbox: " .. (_G.Disabled and "OFF" or "ON")
 	if not _G.Disabled then mech.restoreAll() mech.restoreAllNPCs() end
 end
 
@@ -1762,7 +1763,6 @@ RunService.RenderStepped:Connect(function()
 	if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
 		local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
 		hum.UseJumpPower = true
-		-- FIXED: Now correctly re-enables AutoJump when toggled back ON
 		hum.AutoJumpEnabled = not _G.DisableAutoJump 
 		if _G.WalkSpeedToggle then hum.WalkSpeed = _G.CustomWalkSpeed end
 		if _G.JumpPowerToggle then hum.JumpPower = _G.CustomJumpPower end
@@ -1787,36 +1787,154 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 
-	if _G.Disabled then
+	-- FIXED DYNAMIC AIMBOT ENGINE (Swaps between Head and Torso cleanly)
+	local aimActive = isMobileAimActive or isQPressed
+	if _G.AutoAimEnabled and aimActive and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+		local myRoot = LocalPlayer.Character.HumanoidRootPart
+		local cam = workspace.CurrentCamera
+		local closestTarget = nil
+		local closestDist = 50
+
+		local mouseTargetPart = nil
+		if UserInputService.MouseEnabled then
+			local mousePos = UserInputService:GetMouseLocation()
+			local unitRay = cam:ViewportPointToRay(mousePos.X, mousePos.Y)
+			local raycastParams = RaycastParams.new()
+			raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+			raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+			local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 1000, raycastParams)
+			if result and result.Instance then mouseTargetPart = result.Instance end
+		end
+
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChildOfClass("Humanoid") then
+				local targetHum = p.Character:FindFirstChildOfClass("Humanoid")
+				local passesTeamCheck = not _G.TeamCheck or (p.Team ~= LocalPlayer.Team)
+
+				if targetHum.Health > 0 and passesTeamCheck then
+					local targetRoot = p.Character.HumanoidRootPart
+					local currentDist = (myRoot.Position - targetRoot.Position).Magnitude
+
+					if currentDist <= closestDist then
+						-- Dynamically look up selected part target string from UI settings selection
+						local preferredPartName = _G.AimbotTargetPart or _G.TargetPart or "HumanoidRootPart"
+						local chosenPart = p.Character:FindFirstChild(preferredPartName) or targetRoot
+
+						if mouseTargetPart and mouseTargetPart:IsDescendantOf(p.Character) then
+							closestTarget = chosenPart
+							break
+						end
+						closestTarget = chosenPart
+						closestDist = currentDist
+					end
+				end
+			end
+		end
+
+		if closestTarget then
+			cam.CFrame = CFrame.new(cam.CFrame.Position, closestTarget.Position)
+		end
+	end
+
+	-- STREAMLINED PLAYER PIPELINE
+	if not _G.Disabled then
 		for _, v in next, Players:GetPlayers() do
 			if v ~= LocalPlayer and v.Character then
 				local hum = v.Character:FindFirstChildOfClass("Humanoid")
-				if hum and hum.Health > 0 then pipeline.applyToPlayer(v) else if originalProps[v] then mech.restorePlayer(v) end end
+				if hum and hum.Health > 0 then 
+					pipeline.applyToPlayer(v) 
+				else 
+					if originalProps[v] then mech.restorePlayer(v) end 
+				end
 			end
 		end
 	else
 		mech.restoreAll()
 	end
 
-	if _G.NPCHitbox or _G.NPCESPEnabled then
-		for npc, _ in pairs(trackedNPCs) do
-			if npc and npc.Parent and isNPCModel(npc) then
-				local hum = npc:FindFirstChildOfClass("Humanoid")
-				if hum and hum.Health > 0 then
-					if _G.NPCHitbox then pipeline.applyToNPC(npc) end
-					if _G.NPCESPEnabled then if not npcLabels[npc] then graphics.createNPCLabel(npc) end else graphics.removeNPCLabel(npc) end
-				else
-					mech.restoreNPC(npc)
-					graphics.removeNPCLabel(npc)
+	-- FIXED NPC HITBOX & ESP RUNTIME (Updates instantly on change)
+	for npc, _ in pairs(trackedNPCs) do
+		if npc and npc.Parent and isNPCModel(npc) then
+			local hum = npc:FindFirstChildOfClass("Humanoid")
+			local head = npc:FindFirstChild("Head") or npc:FindFirstChild("HumanoidRootPart")
+
+			if hum and hum.Health > 0 and head then
+				-- Handle Hitbox expansion
+				if _G.NPCHitbox then 
+					pipeline.applyToNPC(npc) 
+				else 
+					mech.restoreNPC(npc) 
+				end
+
+				-- Handle ESP Visuals (Name Tag + Highlight)
+				if _G.NPCESPEnabled then 
+					-- 1. Create/Update Highlight Object
+					local hl = npc:FindFirstChild("NPCHighlight")
+					if not hl then
+						hl = Instance.new("Highlight")
+						hl.Name = "NPCHighlight"
+						hl.FillColor = Color3.fromRGB(255, 0, 0) -- Bright Red fill (Change color here)
+						hl.FillTransparency = 1
+						hl.OutlineColor = Color3.fromRGB(255, 0, 0)
+						hl.OutlineTransparency = 0
+						hl.Adornee = npc
+						hl.Parent = npc
+					end
+
+					-- 2. Create/Update Overhead Name Tag Billboard
+					local bb = npc:FindFirstChild("NPCBillboard")
+					if not bb then
+						bb = Instance.new("BillboardGui")
+						bb.Name = "NPCBillboard"
+						bb.Size = UDim2.new(0, 200, 0, 50)
+						bb.StudsOffset = Vector3.new(0, 3, 0) -- Floats 3 studs above head
+						bb.AlwaysOnTop = true
+						bb.Adornee = head
+						bb.Parent = npc
+
+						local txt = Instance.new("TextLabel")
+						txt.Size = UDim2.new(1, 0, 1, 0)
+						txt.BackgroundTransparency = 1
+						txt.TextColor3 = Color3.fromRGB(255, 255, 255)
+						txt.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+						txt.TextStrokeTransparency = 0
+						txt.Font = Enum.Font.GothamBold
+						txt.TextSize = 13
+						-- FIX: Dynamically displays the NPC's actual model name
+						txt.Text = npc.Name .. " [" .. math.floor(hum.Health) .. " HP]"
+						txt.Parent = bb
+					else
+						-- Keep health updated in real-time
+						local txt = bb:FindFirstChildOfClass("TextLabel")
+						if txt then
+							txt.Text = npc.Name .. " [" .. math.floor(hum.Health) .. " HP]"
+						end
+					end
+				else 
+					-- Remove visuals if toggle is turned OFF
+					if npc:FindFirstChild("NPCBillboard") then npc.NPCBillboard:Destroy() end
+					if npc:FindFirstChild("NPCHighlight") then npc.NPCHighlight:Destroy() end
 				end
 			else
-				untrackNPC(npc)
+				-- Clean up dead NPCs
+				mech.restoreNPC(npc)
+				if npc:FindFirstChild("NPCBillboard") then npc.NPCBillboard:Destroy() end
+				if npc:FindFirstChild("NPCHighlight") then npc.NPCHighlight:Destroy() end
+			end
+		else
+			untrackNPC(npc)
+		end
+	end
+
+	-- Handle complete reset when toggled off completely
+	if not _G.NPCHitbox and not _G.NPCESPEnabled then
+		mech.restoreAllNPCs()
+		for npc, _ in pairs(trackedNPCs) do
+			if npc and npc.Parent then
+				if npc:FindFirstChild("NPCBillboard") then npc.NPCBillboard:Destroy() end
+				if npc:FindFirstChild("NPCHighlight") then npc.NPCHighlight:Destroy() end
 			end
 		end
-	else
-		mech.restoreAllNPCs()
-		for npc, _ in pairs(npcLabels) do graphics.removeNPCLabel(npc) end
-		for npc, _ in pairs(trackedNPCs) do untrackNPC(npc) end
 	end
 end)
 
@@ -1847,4 +1965,3 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 		if hum then poseToggleButton.Text = getRigTypeLabel() end
 	end)
 end)
-
