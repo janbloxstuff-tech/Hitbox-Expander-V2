@@ -880,7 +880,7 @@ local xrayButton = bld.createButton("X-Ray: OFF", 3, settingDropFrame)
 
 -- FIXED: Auto Aim Toggle button assigned dynamic sequencing layout order index (Pushing it below frames)
 _G.AutoAimEnabled = false
-local autoAimToggleBtn = bld.createButton("Auto Aim Lock: OFF", 23)
+local autoAimToggleBtn = bld.createButton("Auto Aim Lock: OFF", 36)
 
 local aimButton = Instance.new("TextButton")
 aimButton.Size = UDim2.new(0, 130, 0, 45)
