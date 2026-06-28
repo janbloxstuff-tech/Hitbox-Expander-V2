@@ -996,42 +996,41 @@ local showNameButton = bld.createButton("Show Name: ON", 1, settingDropFrame)
 local showHealthButton = bld.createButton("Show Health: ON", 2, settingDropFrame)
 local xrayButton = bld.createButton("X-Ray: OFF", 3, settingDropFrame)
 
-local aimDropdownBtn = bld.createButton("Aim Configuration v", 39)
+_G.aimDropdownBtn = bld.createButton("Aim Configuration v", 39)
 
-local aimDropFrame = Instance.new("Frame")
-aimDropFrame.Size = UDim2.new(1, 0, 0, 0)
-aimDropFrame.BackgroundTransparency = 1
-aimDropFrame.LayoutOrder = 40
-aimDropFrame.Visible = false
-aimDropFrame.ZIndex = 13
-aimDropFrame.Parent = bld.scrollingFrame
+_G.aimDropFrame = Instance.new("Frame")
+_G.aimDropFrame.Size = UDim2.new(1, 0, 0, 0)
+_G.aimDropFrame.BackgroundTransparency = 1
+_G.aimDropFrame.LayoutOrder = 40
+_G.aimDropFrame.Visible = false
+_G.aimDropFrame.ZIndex = 13
+_G.aimDropFrame.Parent = bld.scrollingFrame
 
-local aimDropLayout = Instance.new("UIListLayout")
-aimDropLayout.Padding = UDim.new(0, 4)
-aimDropLayout.SortOrder = Enum.SortOrder.LayoutOrder
-aimDropLayout.Parent = aimDropFrame
+_G.aimDropLayout = Instance.new("UIListLayout")
+_G.aimDropLayout.Padding = UDim.new(0, 4)
+_G.aimDropLayout.SortOrder = Enum.SortOrder.LayoutOrder
+_G.aimDropLayout.Parent = _G.aimDropFrame
 
 _G.AutoAimEnabled = false
 _G.AimbotTargetPart = "HumanoidRootPart"
 
-local autoAimToggleBtn = bld.createButton("Auto Aim Lock: OFF", 1)
-autoAimToggleBtn.Parent = aimDropFrame
+_G.autoAimToggleBtn = bld.createButton("Auto Aim Lock: OFF", 1)
+_G.autoAimToggleBtn.Parent = _G.aimDropFrame
 
-local aimTargetToggleBtn = bld.createButton("Aim Target: HumanoidRootPart", 2)
-aimTargetToggleBtn.Parent = aimDropFrame
+_G.aimTargetToggleBtn = bld.createButton("Aim Target: HumanoidRootPart", 2)
+_G.aimTargetToggleBtn.Parent = _G.aimDropFrame
 
--- The screen action button stays parented to the master panel frame so it can display anywhere on the screen
-local aimButton = Instance.new("TextButton")
-aimButton.Size = UDim2.new(0, 130, 0, 45)
-aimButton.Position = UDim2.new(0.5, -65, 0.75, 0) 
-aimButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-aimButton.TextColor3 = Color3.new(1, 1, 1)
-aimButton.Text = "TAP TO LOCK AIM"
-aimButton.Font = Enum.Font.GothamBold
-aimButton.TextSize = 11
-aimButton.Visible = false
-aimButton.ZIndex = 999
-aimButton.Parent = bld.frame.Parent
+_G.aimButton = Instance.new("TextButton")
+_G.aimButton.Size = UDim2.new(0, 130, 0, 45)
+_G.aimButton.Position = UDim2.new(0.5, -65, 0.75, 0) 
+_G.aimButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+_G.aimButton.TextColor3 = Color3.new(1, 1, 1)
+_G.aimButton.Text = "TAP TO LOCK AIM"
+_G.aimButton.Font = Enum.Font.GothamBold
+_G.aimButton.TextSize = 11
+_G.aimButton.Visible = false
+_G.aimButton.ZIndex = 999
+_G.aimButton.Parent = bld.frame.Parent
 
 -- AbsoluteContentSize Adjustments
 teleportDropLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
@@ -1375,11 +1374,11 @@ settingDropdownBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
-aimDropdownBtn.MouseButton1Click:Connect(function()
-	aimDropFrame.Visible = not aimDropFrame.Visible
-	aimDropdownBtn.Text = aimDropFrame.Visible and "Aim Configuration ^" or "Aim Configuration v"
+_G.aimDropdownBtn.MouseButton1Click:Connect(function()
+	_G.aimDropFrame.Visible = not _G.aimDropFrame.Visible
+	_G.aimDropdownBtn.Text = _G.aimDropFrame.Visible and "Aim Configuration ^" or "Aim Configuration v"
 
-	if aimDropFrame.Visible then
+	if _G.aimDropFrame.Visible then
 		-- Collapse all alternative menus to prevent overlap conflicts
 		teleportDropFrame.Visible = false
 		jumpscareDropFrame.Visible = false
@@ -1397,10 +1396,10 @@ aimDropdownBtn.MouseButton1Click:Connect(function()
 		if settingDropFrame then settingDropFrame.Size = UDim2.new(1, 0, 0, 0) end
 
 		-- Stretch the frame neatly based on its children's exact content size
-		aimDropFrame.Size = UDim2.new(1, 0, 0, aimDropLayout.AbsoluteContentSize.Y)
+		_G.aimDropFrame.Size = UDim2.new(1, 0, 0, _G.aimDropLayout.AbsoluteContentSize.Y)
 	else
 		-- Collapse layout instantly back down to 0
-		aimDropFrame.Size = UDim2.new(1, 0, 0, 0)
+		_G.aimDropFrame.Size = UDim2.new(1, 0, 0, 0)
 	end
 end)
 
@@ -1612,13 +1611,13 @@ end)
 flingBtn.MouseButton1Click:Connect(function() flingEngine.fling(flingInput.Text) end)
 
 -- Connect target part swapping action logic
-aimTargetToggleBtn.MouseButton1Click:Connect(function()
+_G.aimTargetToggleBtn.MouseButton1Click:Connect(function()
 	if _G.AimbotTargetPart == "HumanoidRootPart" then
 		_G.AimbotTargetPart = "Head"
 	else
 		_G.AimbotTargetPart = "HumanoidRootPart"
 	end
-	aimTargetToggleBtn.Text = "Aim Target: " .. _G.AimbotTargetPart
+	_G.aimTargetToggleBtn.Text = "Aim Target: " .. _G.AimbotTargetPart
 end)
 
 local isMobileAimActive = false
@@ -1627,30 +1626,30 @@ local aimDragging = false
 local aimDragStart, aimStartPos
 
 -- Dragging Logic
-aimButton.InputBegan:Connect(function(input)
+_G.aimButton.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		aimDragging = true
 		aimDragStart = input.Position
-		aimStartPos = aimButton.Position
+		aimStartPos = _G.aimButton.Position
 	end
 end)
 
-aimButton.InputChanged:Connect(function(input)
+_G.aimButton.InputChanged:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
 		if aimDragging and aimDragStart then
 			local delta = input.Position - aimDragStart
-			aimButton.Position = UDim2.new(aimStartPos.X.Scale, aimStartPos.X.Offset + delta.X, aimStartPos.Y.Scale, aimStartPos.Y.Offset + delta.Y)
+			_G.aimButton.Position = UDim2.new(aimStartPos.X.Scale, aimStartPos.X.Offset + delta.X, aimStartPos.Y.Scale, aimStartPos.Y.Offset + delta.Y)
 		end
 	end
 end)
 
 -- Activation Logic: Mobile Tap & PC Keyboard Listening
-aimButton.MouseButton1Click:Connect(function()
+_G.aimButton.MouseButton1Click:Connect(function()
 	-- If on mobile/touch, a single tap turns it ON/OFF
 	if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
 		isMobileAimActive = not isMobileAimActive
-		aimButton.BackgroundColor3 = isMobileAimActive and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
-		aimButton.Text = isMobileAimActive and "AIM: LOCKED" or "TAP TO LOCK AIM"
+		_G.aimButton.BackgroundColor3 = isMobileAimActive and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
+		_G.aimButton.Text = isMobileAimActive and "AIM: LOCKED" or "TAP TO LOCK AIM"
 	end
 end)
 
@@ -1658,7 +1657,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
 	if _G.AutoAimEnabled and input.KeyCode == Enum.KeyCode.Q then
 		isQPressed = true
-		aimButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+		_G.aimButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
 	end
 end)
 
@@ -1669,20 +1668,20 @@ UserInputService.InputEnded:Connect(function(input)
 	if input.KeyCode == Enum.KeyCode.Q then
 		isQPressed = false
 		if not isMobileAimActive then
-			aimButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+			_G.aimButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 		end
 	end
 end)
 
-autoAimToggleBtn.MouseButton1Click:Connect(function()
+_G.autoAimToggleBtn.MouseButton1Click:Connect(function()
 	_G.AutoAimEnabled = not _G.AutoAimEnabled
-	autoAimToggleBtn.Text = "Auto Aim Lock: " .. (_G.AutoAimEnabled and "ON" or "OFF")
-	aimButton.Visible = _G.AutoAimEnabled
+	_G.autoAimToggleBtn.Text = "Auto Aim Lock: " .. (_G.AutoAimEnabled and "ON" or "OFF")
+	_G.aimButton.Visible = _G.AutoAimEnabled
 	if not _G.AutoAimEnabled then
 		isMobileAimActive = false
 		isQPressed = false
-		aimButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-		aimButton.Text = "TAP TO LOCK AIM"
+		_G.aimButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+		_G.aimButton.Text = "TAP TO LOCK AIM"
 	end
 end)
 
