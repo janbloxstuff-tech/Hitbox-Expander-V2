@@ -1762,11 +1762,27 @@ RunService.RenderStepped:Connect(function()
 
 	if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
 		local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+		
 		hum.UseJumpPower = true
 		hum.AutoJumpEnabled = not _G.DisableAutoJump 
 		if _G.WalkSpeedToggle then hum.WalkSpeed = _G.CustomWalkSpeed end
 		if _G.JumpPowerToggle then hum.JumpPower = _G.CustomJumpPower end
-		if _G.LayModEnabled then hum.HipHeight = -2 end
+		
+		-- Upgraded Lay Down / Hipheight Engine
+		if _G.LayModEnabled and root then
+			if hum.RigType == Enum.HumanoidRigType.R6 then
+				hum.HipHeight = -2.2
+			else
+				-- R15 State: Clean CFrame modification to prevent floor clipping & rubberbands
+				hum.HipHeight = -1.5
+				root.CFrame = root.CFrame * CFrame.Angles(math.rad(-90), 0, 0)
+			end
+		else
+			if hum.HipHeight ~= 0 then 
+				hum.HipHeight = 0 
+			end
+		end
 	end
 
 	-- Continuous No Cooldown Proximity Prompt Loop
