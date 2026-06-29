@@ -1004,7 +1004,7 @@ local showNameButton = bld.createButton("Show Name: ON", 1, settingDropFrame)
 local showHealthButton = bld.createButton("Show Health: ON", 2, settingDropFrame)
 local xrayButton = bld.createButton("X-Ray: OFF", 3, settingDropFrame)
 
-_G.aimDropdownBtn = bld.createButton("Aim Configuration v", 39)
+_G.aimDropdownBtn = bld.createButton("Aim Configuration v", 37)
 
 _G.aimDropFrame = Instance.new("Frame")
 _G.aimDropFrame.Size = UDim2.new(1, 0, 0, 0)
