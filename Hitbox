@@ -574,7 +574,7 @@ noticeLabel.TextColor3 = Color3.fromRGB(255, 200, 255); noticeLabel.Font = Enum.
 
 local localName = "User"
 pcall(function() localName = LocalPlayer.Name end)
-noticeLabel.Text = "Hello there " .. localName .. ",\nthank you for using my script and make sure to give me credit if you're making a video as well.\n\nAlso you can reply on the feedback to the GUI about what I should add next or if you found an issue!\n\nThank you for being a good boy :3 or a good girl :3\nMade by Zhu Yuan the Big Ass Bitch\n\nDon't worry i like Ju fufu's THICC thighs and she's more Breedable than everyone! Also for once again thank you for using my script and exploit well!"
+noticeLabel.Text = "Hello there " .. localName .. ",\nthank you for using my script and make sure to give me credit if you're making a video as well.\n\nAlso you can reply on the feedback to the GUI about what I should add next or if you found an issue!\n\nThank you for being a good boy :3 or a good girl :3\nSponsored by Zhu Yuan the Big Ass Bitch\n\nDon't worry i like Ju fufu's THICC thighs a lot and she's more Breedable than everyone! Also for once again thank you for using my script and exploit well!"
 
 local skipBtn = Instance.new("TextButton")
 skipBtn.Size = UDim2.new(0.5, 0, 0, 38); skipBtn.Position = UDim2.new(0.25, 0, 0.75, 0); skipBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
@@ -1228,31 +1228,6 @@ local function updateTeleportMenu()
 	end
 end
 
-local function globalESPUpdate()
-	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= LocalPlayer then
-			local isTeamDisabled = p.Team and _G.DisabledTeams[p.Team.Name]
-			local failedTeamCheck = _G.TeamCheck and p.Team == LocalPlayer.Team
-
-			if _G.ESPEnabled and not isTeamDisabled and not failedTeamCheck then
-				if not playerLabels[p] then graphics.createESPLabel(p) end
-				graphics.createESPHighlight(p)
-				if p.Character then
-					local hum = p.Character:FindFirstChildOfClass("Humanoid")
-					if hum then utils.safeSetProperty(hum, "DisplayDistanceType", Enum.HumanoidDisplayDistanceType.None) end
-				end
-			else
-				graphics.removeESPHighlight(p)
-				graphics.removeESPLabel(p)
-				if p.Character then
-					local hum = p.Character:FindFirstChildOfClass("Humanoid")
-					if hum then utils.safeSetProperty(hum, "DisplayDistanceType", Enum.HumanoidDisplayDistanceType.Viewer) end
-				end
-			end
-		end
-	end
-end
-
 local function refreshTeamDropdown()
 	for _, c in ipairs(teamDropFrame:GetChildren()) do if not c:IsA("UIListLayout") then c:Destroy() end end
 
@@ -1852,7 +1827,7 @@ RunService.RenderStepped:Connect(function()
 		mech.restoreAll()
 	end
 
-	-- FIXED NPC HITBOX & ESP RUNTIME (Updates instantly on change)
+-- FIXED NPC HITBOX & ESP RUNTIME (Updates instantly on change)
 	for npc, _ in pairs(trackedNPCs) do
 		if npc and npc.Parent and isNPCModel(npc) then
 			local hum = npc:FindFirstChildOfClass("Humanoid")
