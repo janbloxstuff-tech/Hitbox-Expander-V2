@@ -1760,34 +1760,13 @@ RunService.RenderStepped:Connect(function()
 	if _G.LoopFullBright then Lighting.Ambient = Color3.fromRGB(255, 255, 255); Lighting.Brightness = 2; Lighting.ClockTime = 14 end
 	if _G.DayNightToggle and not _G.LoopFullBright then Lighting.ClockTime = 0 end
 
-	local LAY_DOWN_OFFSET = 2
-
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-	local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-	
-	-- Standard modifiers
-	hum.UseJumpPower = true
-	hum.AutoJumpEnabled = not _G.DisableAutoJump 
-	if _G.WalkSpeedToggle then hum.WalkSpeed = _G.CustomWalkSpeed end
-	if _G.JumpPowerToggle then hum.JumpPower = _G.CustomJumpPower end
-	
-	-- New Lay Down Logic
-	local layDownOffset = LAY_DOWN_OFFSET
-	if hum.RigType == Enum.HumanoidRigType.R6 then
-		layDownOffset = -2
-	end
-
-	-- Fetch base hip height from your info table, or fallback to default if not defined
-	local baseHipHeight = (info and info.baseHipHeight) or (hum.RigType == Enum.HumanoidRigType.R6 and 0 or 2)
-
-	if _G.LayModEnabled then
-		pcall(function()
-			hum.HipHeight = baseHipHeight - layDownOffset
-		end)
-	else
-		pcall(function()
-			hum.HipHeight = baseHipHeight
-		end)
+	if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+		local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		hum.UseJumpPower = true
+		hum.AutoJumpEnabled = not _G.DisableAutoJump 
+		if _G.WalkSpeedToggle then hum.WalkSpeed = _G.CustomWalkSpeed end
+		if _G.JumpPowerToggle then hum.JumpPower = _G.CustomJumpPower end
+		if _G.LayModEnabled then hum.HipHeight = -2 end
 	end
 
 	-- Continuous No Cooldown Proximity Prompt Loop
